@@ -146,12 +146,12 @@ Before touching the code, download and install these 3 free tools:
 3. Python (version 3.10, 3.11, or 3.12)
   ⚬ Download & install from: https://www.python.org/downloads/      
 
-Verify Installations:
+**Verify Installations:**
 Open your terminal (Terminal on Mac, or Command Prompt / PowerShell on Windows) and run:
 
-git --version
-node -v
-python --version
+    git --version
+    node -v
+    python --version
 
 If all three show version numbers, you are ready to proceed!
 
@@ -164,28 +164,26 @@ Step 3: Set Up and Run the Back-End (FastAPI)
 Open your terminal inside the computing-project folder:
 
 # 1. Enter the backend directory
-cd backend
+    cd backend
 
 # 2. Create an isolated Python virtual environment
-python -m venv .venv
+    python -m venv .venv
 
 # 3. Activate the virtual environment
 # --- If you are on Mac: ---
-source .venv/bin/activate
+    source .venv/bin/activate
 # --- If you are on Windows (Command Prompt): ---
-.venv\Scripts\activate
-# --- If you are on Windows (PowerShell): ---
-.venv\Scripts\Activate.ps1
+    .venv\Scripts\activate
 
 # 4. Install required libraries (FastAPI, XGBoost, Scikit-Learn, Pandas)
-pip install -r requirements.txt
+    pip install -r requirements.txt
 
 # 5. Start the back-end server
-python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 ⚬ Check if it works:
   Open your web browser and visit:
-  👉 http://localhost:8000/docs
+  👉 **http://localhost:8000/docs**
   (You should see the interactive FastAPI Swagger page with all the APIs listed).
 
 👉 Leave this terminal open and running!
@@ -195,13 +193,13 @@ Step 4: Set Up and Run the Front-End (React.js)
 Open a NEW terminal window or tab (keep the backend terminal running):
 
 # 1. Navigate to the project's frontend directory
-cd computing-project/frontend
+    cd computing-project/frontend
 
 # 2. Install all frontend packages (React 19, Material UI, D3.js)
-npm install --legacy-peer-deps
+    npm install --legacy-peer-deps
 
 # 3. Start the front-end server
-npm start
+    npm start
 
 ⚬ Check if it works:
   Your browser will automatically open:
@@ -210,14 +208,20 @@ npm start
 
 💡** Daily Use (After the first-time setup above)**
 
-⚬ Terminal 1 (Backend/window): skip activate method
-  cd computing-project/backend
- .\.venv\Scripts\python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+**⚬ Terminal 1 (Backend/window): skip activation method**
 
-⚬ Terminal 1 (Backend/Mac): skip activate method
-  cd computing-project/backend
-./.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      cd computing-project/backend
   
-⚬ Terminal 2 (Frontend):
-  cd computing-project/frontend
-  npm start
+     .\.venv\Scripts\python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+**⚬ Terminal 1 (Backend/Mac): skip activation method**
+
+      cd computing-project/backend
+  
+    ./.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+  
+**⚬ Terminal 2 (Frontend):**
+
+      cd computing-project/frontend
+  
+      npm start
