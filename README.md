@@ -129,3 +129,105 @@ Group7_Assignment3_SchoolAir/
 | **POST** | `/api/v1/events` | Creates a new scheduled school outdoor event and automatically attaches its AI forecast. |
 | **PUT** | `/api/v1/events/{event_id}` | Updates or reschedules an existing school event (e.g., shifting to the cleanest morning hour or optimal month) and recomputes its AI safety badge. |
 | **DELETE** | `/api/v1/events/{event_id}` | Removes a scheduled school event from the calendar. |
+Here is a complete, beginner-friendly setup guide assuming your groupmates are starting from a completely blank laptop with nothing installed. You can copy and paste this directly to them:
+
+🚀 SchoolAir Full-Stack Setup Guide (From Scratch)
+
+This guide walks you through setting up and running SchoolAir on a fresh computer (Windows or Mac).
+
+Step 1: Install the Required Tools
+
+Before touching the code, download and install these 3 free tools:
+
+1. Git
+  ⚬ Download & install from: https://git-scm.com/downloads
+  ⚬ (During installation, keep clicking "Next" with the default settings).
+2. Node.js (LTS version)
+  ⚬ Download & install the LTS (Long Term Support) version from: https://nodejs.org/
+  ⚬ (This installs both node and npm).
+3. Python (version 3.10, 3.11, or 3.12)
+  ⚬ Download & install from: https://www.python.org/downloads/
+  ⚬ ⚠️ Crucial for Windows users: On the very first installation screen, make sure to check the box:
+    ☑️ "Add python.exe to PATH" before clicking Install!
+
+Verify Installations:
+Open your terminal (Terminal on Mac, or Command Prompt / PowerShell on Windows) and run:
+
+git --version
+node -v
+python --version
+
+
+If all three show version numbers, you are ready to proceed!
+
+Step 2: Clone the Project Repository
+
+Open your terminal, navigate to where you want to keep your project (e.g. Desktop), and clone the repo:
+
+git clone <PASTE_YOUR_GITHUB_REPO_URL_HERE>
+cd computing-project
+
+
+Step 3: Set Up and Run the Back-End (FastAPI)
+
+Open your terminal inside the computing-project folder:
+
+# 1. Enter the backend directory
+cd backend
+
+# 2. Create an isolated Python virtual environment
+python -m venv .venv
+
+# 3. Activate the virtual environment
+# --- If you are on Mac: ---
+source .venv/bin/activate
+# --- If you are on Windows (Command Prompt): ---
+# .venv\Scripts\activate
+# --- If you are on Windows (PowerShell): ---
+# .venv\Scripts\Activate.ps1
+
+# 4. Install required libraries (FastAPI, XGBoost, Scikit-Learn, Pandas)
+pip install -r requirements.txt
+
+# 5. Start the back-end server
+python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+
+⚬ Check if it works:
+  Open your web browser and visit:
+  👉 http://localhost:8000/docs
+  (You should see the interactive FastAPI Swagger page with all the APIs listed).
+
+👉 Leave this terminal open and running!
+
+Step 4: Set Up and Run the Front-End (React.js)
+
+Open a NEW terminal window or tab (keep the backend terminal running):
+
+# 1. Navigate to the project's frontend directory
+cd computing-project/frontend
+
+# 2. Install all frontend packages (React 19, Material UI, D3.js)
+npm install --legacy-peer-deps
+
+# 3. Start the front-end server
+npm start
+
+
+⚬ Check if it works:
+  Your browser will automatically open:
+  👉 http://localhost:3000
+  (You should see the SchoolAir website with a green "Online" badge in the top right).
+
+💡 Daily Use (After the first-time setup above)
+
+Once the first-time installation is done, on normal days you only need to run:
+
+⚬ Terminal 1 (Backend):
+  cd computing-project/backend
+  source .venv/bin/activate   # (or .venv\Scripts\activate on Windows)
+  python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+  
+⚬ Terminal 2 (Frontend):
+  cd computing-project/frontend
+  npm start
