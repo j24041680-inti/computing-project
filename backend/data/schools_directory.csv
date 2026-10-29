@@ -1,0 +1,33 @@
+school_id,school_name,school_level,state,school_lat,school_lon,matched_district,corridor,station_lat,station_lon,distance_km
+SCH-001,SK Sri Petaling,Primary School,Selangor,3.1072,101.6431,Petaling Jaya,Central Corridor,3.133169,101.608011,4.85
+SCH-002,SMK Damansara Utama,Secondary School,Selangor,3.1368,101.6215,Petaling Jaya,Central Corridor,3.133169,101.608011,1.55
+SCH-003,SK Subang Jaya,Primary School,Selangor,3.0754,101.5865,Shah Alam,Central Corridor,3.104717,101.556222,4.68
+SCH-004,SMK Seksyen 9 Shah Alam,Secondary School,Selangor,3.0852,101.5244,Shah Alam,Central Corridor,3.104717,101.556222,4.15
+SCH-005,SK Bandar Banting,Primary School,Selangor,2.8135,101.5028,Banting,Central Corridor,2.816689,101.623158,13.37
+SCH-006,SMK Kuala Selangor,Secondary School,Selangor,3.3401,101.2512,Kuala Selangor,Central Corridor,3.321308,101.256242,2.16
+SCH-007,SK Batu Muda,Primary School,Kuala Lumpur,3.2145,101.685,Batu Muda,Central Corridor,3.212439,101.682228,0.38
+SCH-008,SMK Seri Bintang Utara (Cheras),Secondary School,Kuala Lumpur,3.1128,101.7294,Batu Muda,Central Corridor,3.212439,101.682228,12.25
+SCH-009,SK Putrajaya Presint 8(1),Primary School,Putrajaya,2.9325,101.6811,Putrajaya,Central Corridor,2.9196,101.696,2.19
+SCH-010,SMK Putrajaya Presint 11(1),Secondary School,Putrajaya,2.9592,101.6745,Putrajaya,Central Corridor,2.9196,101.696,5.01
+SCH-011,SK Kongsi Balik Pulau,Primary School,Pulau Pinang,5.3491,100.2314,Balik Pulau,Northern Corridor,5.337598,100.214721,2.25
+SCH-012,SMK Tinggi Bukit Mertajam (Seberang Perai),Secondary School,Pulau Pinang,5.3621,100.4619,Seberang Perai,Northern Corridor,5.329358,100.443475,4.17
+SCH-013,SK Seberang Jaya,Primary School,Pulau Pinang,5.3948,100.4012,Seberang Jaya,Northern Corridor,5.39817,100.403947,0.48
+SCH-014,SK Minden Height,Primary School,Pulau Pinang,5.3522,100.3045,Minden,Northern Corridor,5.356211,100.30792,0.59
+SCH-015,SMK Penang Free School,Secondary School,Pulau Pinang,5.4036,100.3049,Minden,Northern Corridor,5.356211,100.30792,5.28
+SCH-016,SK Larkin 1 Johor Bahru,Primary School,Johor,1.4968,103.7425,Larkin,Southern Corridor,1.494625,103.735975,0.76
+SCH-017,SMK Sultan Ismail JB,Secondary School,Johor,1.4742,103.7361,Larkin,Southern Corridor,1.494625,103.735975,2.27
+SCH-018,SK Taman Pasir Putih (Pasir Gudang),Primary School,Johor,1.4685,103.9214,Pasir Gudang,Southern Corridor,1.470122,103.893456,3.11
+SCH-019,SMK Bandar Kota Tinggi,Secondary School,Johor,1.7294,103.8992,Pasir Gudang,Southern Corridor,1.470122,103.893456,28.84
+SCH-020,SMK Tinggi Kluang,Secondary School,Johor,2.0315,103.3185,Kluang,Southern Corridor,2.037882,103.312063,1.01
+SCH-021,SK Bandar Maharani (Tangkak/Muar),Primary School,Johor,2.2681,102.5392,Tangkak,Southern Corridor,2.319756,102.518743,6.18
+SCH-022,SMK Tinggi Batu Pahat,Secondary School,Johor,1.8492,102.9345,Batu Pahat,Southern Corridor,1.919323,102.866618,10.85
+SCH-023,SK Bukit Hampar Segamat,Primary School,Johor,2.5065,102.8214,Segamat,Southern Corridor,2.493914,102.862694,4.8
+SCH-024,SK Batu Lintang Kuching,Primary School,Sarawak,1.5342,110.3448,Kuching,East Malaysia,1.562229,110.388958,5.81
+SCH-025,SMK Green Road Kuching,Secondary School,Sarawak,1.5451,110.3362,Kuching,East Malaysia,1.562229,110.388958,6.17
+SCH-026,SMK Baru Miri,Secondary School,Sarawak,4.3982,113.9912,Miri,East Malaysia,4.424679,114.012426,3.77
+SCH-027,SK Sacred Heart Sibu,Primary School,Sarawak,2.2895,111.8284,Sibu,East Malaysia,2.314408,111.831916,2.8
+SCH-028,SMK Bintulu,Secondary School,Sarawak,3.1842,113.0491,Bintulu,East Malaysia,3.177084,113.041091,1.19
+SCH-029,SK Sri Gaya Kota Kinabalu,Primary School,Sabah,5.9742,116.0792,Kota Kinabalu,East Malaysia,5.89372,116.04327,9.79
+SCH-030,SMK Sung Siew Sandakan,Secondary School,Sabah,5.8421,118.1125,Sandakan,East Malaysia,5.864467,118.091089,3.43
+SCH-031,SMK Kuhara Tawau,Secondary School,Sabah,4.2584,117.8942,Tawau,East Malaysia,4.249786,117.935864,4.72
+SCH-032,SK Pekan Satu Labuan,Primary School,Labuan,5.2831,115.2415,Labuan,East Malaysia,5.298107,115.232106,1.97
