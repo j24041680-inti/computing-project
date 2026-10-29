@@ -139,16 +139,12 @@ Step 1: Install the Required Tools
 
 Before touching the code, download and install these 3 free tools:
 
-1. Git
-  ⚬ Download & install from: https://git-scm.com/downloads
-  ⚬ (During installation, keep clicking "Next" with the default settings).
+1. Git    
 2. Node.js (LTS version)
   ⚬ Download & install the LTS (Long Term Support) version from: https://nodejs.org/
   ⚬ (This installs both node and npm).
 3. Python (version 3.10, 3.11, or 3.12)
-  ⚬ Download & install from: https://www.python.org/downloads/
-  ⚬ ⚠️ Crucial for Windows users: On the very first installation screen, make sure to check the box:
-    ☑️ "Add python.exe to PATH" before clicking Install!
+  ⚬ Download & install from: https://www.python.org/downloads/      
 
 Verify Installations:
 Open your terminal (Terminal on Mac, or Command Prompt / PowerShell on Windows) and run:
@@ -157,16 +153,11 @@ git --version
 node -v
 python --version
 
-
 If all three show version numbers, you are ready to proceed!
 
 Step 2: Clone the Project Repository
 
-Open your terminal, navigate to where you want to keep your project (e.g. Desktop), and clone the repo:
-
-git clone <PASTE_YOUR_GITHUB_REPO_URL_HERE>
-cd computing-project
-
+Open your terminal, navigate to where you want to keep your project (e.g. Desktop), and clone the repo
 
 Step 3: Set Up and Run the Back-End (FastAPI)
 
@@ -182,9 +173,9 @@ python -m venv .venv
 # --- If you are on Mac: ---
 source .venv/bin/activate
 # --- If you are on Windows (Command Prompt): ---
-# .venv\Scripts\activate
+.venv\Scripts\activate
 # --- If you are on Windows (PowerShell): ---
-# .venv\Scripts\Activate.ps1
+.venv\Scripts\Activate.ps1
 
 # 4. Install required libraries (FastAPI, XGBoost, Scikit-Learn, Pandas)
 pip install -r requirements.txt
