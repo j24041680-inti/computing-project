@@ -183,7 +183,6 @@ pip install -r requirements.txt
 # 5. Start the back-end server
 python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-
 ⚬ Check if it works:
   Open your web browser and visit:
   👉 http://localhost:8000/docs
@@ -204,20 +203,20 @@ npm install --legacy-peer-deps
 # 3. Start the front-end server
 npm start
 
-
 ⚬ Check if it works:
   Your browser will automatically open:
   👉 http://localhost:3000
   (You should see the SchoolAir website with a green "Online" badge in the top right).
 
-💡 Daily Use (After the first-time setup above)
+💡** Daily Use (After the first-time setup above)**
 
-Once the first-time installation is done, on normal days you only need to run:
-
-⚬ Terminal 1 (Backend):
+⚬ Terminal 1 (Backend/window): skip activate method
   cd computing-project/backend
-  source .venv/bin/activate   # (or .venv\Scripts\activate on Windows)
-  python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+ .\.venv\Scripts\python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+⚬ Terminal 1 (Backend/Mac): skip activate method
+  cd computing-project/backend
+./.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
   
 ⚬ Terminal 2 (Frontend):
   cd computing-project/frontend
