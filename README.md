@@ -175,12 +175,12 @@ Open your terminal inside the computing-project folder:
 # --- If you are on Windows (Command Prompt): ---
     .venv\Scripts\activate
 # On Windows (PowerShell):**
-.venv\Scripts\Activate.ps1**
+.\.venv\Scripts\Activate.ps1**
 # 4. Install required libraries (FastAPI, XGBoost, Scikit-Learn, Pandas)
     .\.venv\Scripts\pip.exe install -r requirements.txt
 
 # 5. Start the back-end server
-    .\.venv\Scripts\python.exe -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    python -m uvicorn main:app --reload
 
 ⚬ Check if it works:
   Open your web browser and visit:
