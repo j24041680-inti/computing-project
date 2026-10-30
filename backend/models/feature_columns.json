@@ -1,0 +1,14 @@
+[
+  "latitude",
+  "longitude",
+  "API",
+  "temperature",
+  "humidity",
+  "wind_speed",
+  "hour",
+  "month",
+  "day_of_week",
+  "Lag_1h",
+  "Lag_24h",
+  "Rolling_Mean_6h"
+]
