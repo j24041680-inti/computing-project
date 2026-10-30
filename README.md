@@ -2,227 +2,284 @@
 
 **Unit Code:** COS30049 – Computing Technology Innovation Project  
 **Assignment:** Assignment 3 – Full-Stack Web Development for AI Application  
-**Academic Session:** Semester 2 (August 2026)  
+**Academic Session:** Semester 2 (2026)  
 **Group Identification:** Group 7 (Poh Wei Le, Ng Boon Ping, Kennard Chan Kai Lik, Tee Ming Jun)  
-**Lecturer / Convenor:** Mohamad Faizal Alias  
+**Convenor / Lecturer:** Mohamad Faizal Alias  
 
 ---
 
 ## 1. System Overview
 
-**SchoolAir** is a full-stack web application built with **React.js** and **D3.js** on the front end and **FastAPI** on the back end, integrating the trained **XGBoost** machine learning pipeline from Assignment 2 (`champion_regressor.joblib` and `champion_classifier.joblib`).
+**SchoolAir** is a production-grade full-stack web application integrating machine learning with interactive data visualization to safeguard Malaysian schoolchildren against urban air pollution and transboundary haze.
 
-Designed for Malaysian primary and secondary school administrators, PE teachers, sports coordinators, and school health officers, SchoolAir removes the need for users to manually enter raw sensor lags or pollutant sub-indices. Instead, the backend uses the trained Assignment 2 XGBoost models to generate a comprehensive **7,488-record pre-computed hourly forecast & TreeSHAP attribution database** across all **26 DOE monitoring stations**, **12 months**, and **24 hours**, paired with **32 Haversine-matched Malaysian schools**. When a school or teacher selects any school/district, planned event date/month, time slot, and student vulnerability cohort, the predicted Air Pollutant Index (API), expected surface weather (`temperature`, `humidity`, `wind_speed`), Malaysian Ministry of Education (MOE) Circular No. 1/2019 safety directive, and interactive **D3.js visualizations** appear immediately.
+The platform bridges trained **XGBoost** regression and classification models with a modern, responsive web stack:
+- **Frontend:** React 19, Material UI (MUI), and four custom D3.js (v7) visualization engines.
+- **Backend:** High-performance FastAPI REST server with Pydantic boundary validation.
+- **Machine Learning Core:** XGBoost universal cross-platform model boosters (`champion_regressor.json`, `champion_classifier.json`) serving precomputed hourly hazard forecasts across all 26 DOE air quality monitoring stations in Malaysia, alongside a live What-If scenario inference engine.
+- **Regulatory Framework:** Evaluates student exposure against **Malaysian Ministry of Education (MOE) Circular No. 1/2019** and the **Malaysian Ambient Air Quality Standard (MAAQS)** across three student vulnerability cohorts (*Cohort A: General*, *Cohort B: High-Intensity Athletic*, *Cohort C: Asthmatic & Respiratory Sensitive*).
 
 ---
 
-## 2. Project Directory Structure
+## 2. Repository Directory Structure
 
 ```text
-Group7_Assignment3_SchoolAir/
+computing-project/
+├── README.md                                     <-- Complete project documentation & execution guide
+├── start_schoolair.sh                            <-- One-click macOS / Linux launch script
 │
-├── README.md                                     <-- Full setup, architecture & API guide
-├── start_schoolair.sh                            <-- One-click launcher for Backend + Frontend
+├── backend/                                      <-- FastAPI Server & AI Model Serving
+│   ├── main.py                                   <-- REST API server (CORS, CRUD, What-If simulation)
+│   ├── generate_forecast_dataset.py              <-- Precomputes 7,488 hourly forecasts & TreeSHAP data
+│   ├── requirements.txt                          <-- Python dependencies
+│   ├── models/                                   <-- Machine learning models & feature mappings
+│   │   ├── champion_regressor.json               <-- Universal cross-platform XGBoost Regressor
+│   │   ├── champion_classifier.json              <-- Universal cross-platform XGBoost Classifier
+│   │   ├── feature_columns.json                  <-- Input feature schema (12 features)
+│   │   ├── champion_regressor.joblib             <-- Legacy pickle binary (fallback)
+│   │   ├── champion_classifier.joblib            <-- Legacy pickle binary (fallback)
+│   │   └── feature_columns.joblib                <-- Legacy feature schema (fallback)
+│   └── data/                                     <-- Precomputed forecasts & station metadata
+│       ├── clean_locations.csv                   <-- 26 DOE monitoring stations with GPS coordinates
+│       ├── schools_directory.csv                 <-- 32 Malaysian schools matched via Haversine distance
+│       ├── precomputed_hourly_forecasts.csv      <-- 7,488 hourly predictions & TreeSHAP attributions
+│       ├── precomputed_monthly_summary.csv       <-- 312 monthly seasonal planning records
+│       ├── precomputed_multiday_episodes.csv     <-- 4,368 multi-day haze time-series points
+│       ├── analytics_metadata.json               <-- Regional correlation matrices & model evaluation
+│       └── scheduled_events.json                 <-- Persistent JSON store for event scheduling CRUD
 │
-├── backend/                                      <-- FastAPI Server & Packaged AI Model Pipeline
-│   ├── main.py                                   <-- FastAPI REST API server (GET, POST, PUT, DELETE)
-│   ├── generate_forecast_dataset.py              <-- Pre-computes XGBoost forecasts & TreeSHAP dataset
-│   ├── requirements.txt                          <-- Pinned Python dependencies
-│   ├── models/                                   <-- Serialized Assignment 2 XGBoost model binaries
-│   │   ├── champion_regressor.joblib             <-- Champion XGBoost Regressor (MAE=6.9553, R²=0.6123)
-│   │   ├── champion_classifier.joblib            <-- Cost-Weighted XGBoost Classifier (Acc=80.24%)
-│   │   └── feature_columns.joblib                <-- Locked 12-feature input schema order
-│   └── data/                                     <-- Pre-computed AI Forecast & Station Tables
-│       ├── clean_locations.csv                   <-- 26 verified DOE monitoring station coordinates
-│       ├── schools_directory.csv                 <-- 32 Malaysian schools bound via Haversine distance
-│       ├── precomputed_hourly_forecasts.csv      <-- 7,488 hourly XGBoost forecasts & TreeSHAP values
-│       ├── precomputed_monthly_summary.csv       <-- 312 monthly seasonal event planning summaries
-│       ├── precomputed_multiday_episodes.csv     <-- 4,368 multi-day haze episode rows for D3 brush-zoom
-│       ├── analytics_metadata.json               <-- Corridor Pearson correlation matrices & model metrics
-│       └── scheduled_events.json                 <-- Persistent store for School Event Schedule CRUD
-│
-└── frontend/                                     <-- React.js + D3.js Front-End Web Application
-    ├── package.json                              <-- React 19 & D3.js v7 dependencies
+└── frontend/                                     <-- React.js + D3.js Web Application
+    ├── package.json                              <-- React, MUI, and D3.js dependencies
+    ├── package-lock.json
     ├── public/
-    │   └── index.html                            <-- HTML root container
+    │   └── index.html                            <-- HTML entry point
     └── src/
-        ├── App.js                                <-- Main 4-view SPA controller & state management
-        ├── App.css                               <-- Responsive desktop, tablet, mobile & print styles
+        ├── App.js                                <-- Core SPA controller, multi-year state & routing
+        ├── App.css                               <-- Responsive styling, mobile viewports & print styles
+        ├── index.js                              <-- React DOM renderer
         ├── utils/
-        │   └── exportUtils.js                    <-- Client-side CSV & printable PDF report exporters
+        │   └── exportUtils.js                    <-- CSV and printable PDF export utilities
         └── components/
-            └── charts/                           <-- 4 Custom Interactive D3.js Chart Components (HD)
-                ├── SafetyGaugeD3.js              <-- Chart 1: Cohort-Aware Semicircle Safety Dial Gauge
-                ├── DiurnalTrendD3.js             <-- Chart 2: 24h Diurnal Curve & 168h Brush-Zoom Trendline
-                ├── ShapAttributionD3.js          <-- Chart 3: TreeSHAP Feature Attribution Bar Chart
-                └── SeasonalHeatmapD3.js          <-- Chart 4: 12-Month Station Risk & Correlation Heatmap
+            └── charts/                           <-- Custom Interactive D3.js Visualizations
+                ├── SafetyGaugeD3.js              <-- Semicircle dial gauge with animated needle
+                ├── DiurnalTrendD3.js             <-- 24h diurnal curve & 168h Focus+Context brush-zoom
+                ├── ShapAttributionD3.js          <-- TreeSHAP feature attribution bar chart
+                └── SeasonalHeatmapD3.js          <-- 12-month station risk & Pearson correlation matrix
 ```
 
 ---
 
-## 3. Prerequisites & Installation Instructions
+## 3. First-Time Setup Guide (From Scratch)
 
-### 3.1 Back-End Setup (FastAPI + XGBoost)
+Follow these steps if you are setting up the project on a new computer.
 
-1. Navigate to the `backend` folder:
+### Step 3.1: Install Required Software
+Ensure the following are installed:
+1. **Git** or **GitHub Desktop**: [https://desktop.github.com/](https://desktop.github.com/)
+2. **Node.js (LTS version 18, 20, or 22)**: [https://nodejs.org/](https://nodejs.org/) *(installs both `node` and `npm`)*
+3. **Python (version 3.10, 3.11, or 3.12 recommended)**: [https://www.python.org/downloads/](https://www.python.org/downloads/)  
+   *Windows Users:* During Python installation, make sure to check the box **"Add Python to PATH"**.
+
+Verify installations in your terminal:
+```bash
+git --version
+node -v
+python --version
+```
+
+---
+
+### Step 3.2: Clone or Pull the Repository
+- **Using GitHub Desktop:** Click **File** > **Clone Repository**, select `computing-project`, and choose a local destination folder.
+- **Using Git CLI:**
+  ```bash
+  git clone https://github.com/<your-username>/computing-project.git
+  cd computing-project
+  ```
+
+---
+
+### Step 3.3: Set Up the Backend (Python FastAPI)
+
+1. Open a terminal in the project root and navigate to `backend`:
    ```bash
    cd backend
    ```
-2. Activate the pre-configured virtual environment (or create a new one):
-   ```bash
-   source .venv/bin/activate
-   ```
-   *(If setting up on a fresh machine: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`)*
-3. *(Optional)* Regenerate the pre-computed forecast datasets from the Assignment 2 models:
-   ```bash
-   python generate_forecast_dataset.py
-   ```
-4. Start the FastAPI server on `http://localhost:8000`:
-   ```bash
-   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-   * Interactive Swagger API Documentation is automatically available at: `http://localhost:8000/docs`
 
-### 3.2 Front-End Setup (React.js + D3.js)
+2. Create an isolated virtual environment (`.venv`):
+   - **Windows:**
+     ```powershell
+     python -m venv .venv
+     ```
+   - **macOS / Linux:**
+     ```bash
+     python3 -m venv .venv
+     ```
 
-1. Open a new terminal window and navigate to the `frontend` folder:
+3. Install required Python packages into `.venv`:
+   - **Windows:**
+     ```powershell
+     .\.venv\Scripts\python.exe -m pip install --upgrade pip
+     .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+     ```
+   - **macOS / Linux:**
+     ```bash
+     source .venv/bin/activate
+     pip install --upgrade pip
+     pip install -r requirements.txt
+     ```
+
+4. Start the backend server:
+   - **Windows (Direct path, avoids PowerShell script execution blocks):**
+     ```powershell
+     .\.venv\Scripts\python.exe -m uvicorn main:app --reload
+     ```
+   - **macOS / Linux:**
+     ```bash
+     source .venv/bin/activate
+     uvicorn main:app --reload
+     ```
+
+5. Verify backend health:
+   - Open your browser and navigate to: **[http://localhost:8000/docs](http://localhost:8000/docs)**
+   - You should see the interactive Swagger UI and `[SchoolAir] Successfully initialized live XGBoost models.` in the terminal.
+   - *Leave this terminal window running.*
+
+---
+
+### Step 3.4: Set Up the Frontend (React.js + D3.js)
+
+1. Open a **second terminal window** and navigate to `frontend`:
    ```bash
-   cd frontend
+   cd computing-project/frontend
    ```
-2. Install Node.js dependencies (if `node_modules` is not already present):
+
+2. Install JavaScript packages:
    ```bash
    npm install --legacy-peer-deps
    ```
-3. Start the React development server on `http://localhost:3000`:
+
+3. Start the React development server:
    ```bash
    npm start
    ```
 
----
-
-## 4. Key Features & High Distinction (HD) Capabilities
-
-1. **Four Interactive D3.js Visualizations (Pure D3.js):**
-   * **Chart 1 (`SafetyGaugeD3.js`):** Semicircle dial gauge with animated needle transitions and hoverable MOE safety zone arcs that dynamically resize when switching between *General*, *Athletic*, and *Asthmatic* student cohorts.
-   * **Chart 2 (`DiurnalTrendD3.js`):** Dual-mode interactive time-series chart providing a clickable 24-hour diurnal event window optimizer on the Safety Checker page and a **168-hour Focus + Context `d3.brushX` Brush-Zoom chart** on the Analytics Dashboard.
-   * **Chart 3 (`ShapAttributionD3.js`):** Interactive horizontal bar chart displaying exact XGBoost `pred_contribs=True` TreeSHAP attributions, toggleable between *% Impact Share* and *Signed API Shift (± API pts)*.
-   * **Chart 4 (`SeasonalHeatmapD3.js`):** Interactive matrix visualization switching between the **26-Station × 12-Month Seasonal Event Risk Heatmap** (with click-to-inspect drill-down) and the **7×7 Pearson Correlation Matrix (`r`)** across corridors.
-2. **Pre-Computed Lookup + Hybrid Live Model Execution:**
-   * Teachers and school administrators never need to guess technical lag features—selecting a Malaysian school, date/month, time slot, and activity immediately retrieves the pre-computed forecast and weather profile.
-   * Includes a collapsible **What-If Weather & Boundary Validation Stress Tester** that runs live `champion_regressor.joblib` inference and demonstrates client/server MAAQS input validation.
-3. **Full RESTful CRUD Event Schedule Manager (`GET`, `POST`, `PUT`, `DELETE`) & CSV Export:**
-   * Schools can save planned outdoor events (`POST /api/v1/events`), auto-reschedule risky events to the cleanest morning hour or optimal month (`PUT /api/v1/events/{id}`), delete cancelled events (`DELETE /api/v1/events/{id}`), and export CSV or print-ready PDF compliance reports.
+4. Open the web app:
+   - The browser will automatically open **[http://localhost:3000](http://localhost:3000)**.
+   - The top navigation bar should display a green **Online** status badge.
 
 ---
 
-## 5. REST API Endpoint Summary
+## 4. Daily Running Commands (Subsequent Launches)
 
-| HTTP Method | Endpoint Route | Description |
+Once the first-time setup is complete, you only need to run the two servers:
+
+### Terminal 1: Backend (FastAPI)
+```powershell
+# Windows:
+cd computing-project\backend
+.\.venv\Scripts\python.exe -m uvicorn main:app --reload
+
+# macOS / Linux:
+cd computing-project/backend
+source .venv/bin/activate
+uvicorn main:app --reload
+```
+
+### Terminal 2: Frontend (React)
+```bash
+cd computing-project/frontend
+npm start
+```
+
+*(On macOS/Linux, you can also run `./start_schoolair.sh` from the repository root to launch both simultaneously).*
+
+---
+
+## 5. Troubleshooting & FAQ
+
+### Q1: `xgboost._c_api.XGBoostError: input stream corrupted` on Windows
+- **Cause:** Occurs when loading raw C++ pickled buffers from `.joblib` files across differing operating systems (macOS vs Windows).
+- **Solution:** SchoolAir includes cross-platform JSON model boosters (`champion_regressor.json` and `champion_classifier.json`). Ensure you have pulled the latest commit from the repository, which loads `.json` models by default.
+
+### Q2: PowerShell says `running scripts is disabled on this system`
+- **Cause:** Windows restricts running `.ps1` activation scripts by default.
+- **Solution:** You do not need to activate the environment. Execute Python directly from the virtual environment:
+  ```powershell
+  .\.venv\Scripts\python.exe -m uvicorn main:app --reload
+  ```
+  Alternatively, enable local script execution in PowerShell (Run as Administrator):
+  ```powershell
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
+
+### Q3: `ModuleNotFoundError: No module named 'xgboost'` or `pandas`
+- **Cause:** The terminal is running your computer's global Python rather than the virtual environment's Python.
+- **Solution:** Always run commands using `.\.venv\Scripts\python.exe` on Windows or `source .venv/bin/activate` on macOS. In VS Code, press `Ctrl + Shift + P` > **Python: Select Interpreter** > select `backend\.venv\Scripts\python.exe`.
+
+### Q4: Port 8000 or 3000 is already in use
+- **Solution:** Stop any existing processes running on those ports:
+  - **Windows:**
+    ```powershell
+    netstat -ano | findstr :8000
+    taskkill /PID <PID> /F
+    ```
+  - **macOS / Linux:**
+    ```bash
+    lsof -ti :8000 | xargs kill -9
+    lsof -ti :3000 | xargs kill -9
+    ```
+
+---
+
+## 6. Key Features & Visualizations
+
+1. **Safety Checker View (`/checker`):**
+   - Instant forecast lookup by State, District, Date, Hour, Cohort, and Activity.
+   - Semicircle safety gauge with dynamic MOE threshold sectors.
+   - 24-hour diurnal risk curve highlighting the safest clean-air window.
+   - TreeSHAP feature attributions showing exact drivers of air quality.
+   - Live What-If Stress Tester with MAAQS boundary validation.
+
+2. **Event Planner View (`/planner`):**
+   - Multi-year planning calendar (2026, 2027, 2028, 2029).
+   - District-level monthly risk bar chart and Monsoon hazard warnings.
+   - Full RESTful Event Schedule Manager with Create, Edit, Reschedule, and Delete actions.
+   - One-click CSV and print-ready PDF export.
+
+3. **Analytics Dashboard (`/analytics`):**
+   - 168-hour Focus + Context interactive brush-zoom time-series (`d3.brushX`).
+   - 26-Station × 12-Month seasonal risk heatmap with drill-down inspector.
+   - Inter-pollutant and weather Pearson correlation matrix.
+
+---
+
+## 7. REST API Endpoints
+
+The backend provides full Swagger UI documentation at `http://localhost:8000/docs`.
+
+| Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| **GET** | `/api/v1/health` | Returns server status, loaded `.joblib` model metadata, and pre-computed dataset counts. |
-| **GET** | `/api/v1/stations` | Returns all 26 DOE monitoring stations, 4 regional corridors, and 32 Haversine-matched schools. |
-| **GET** | `/api/v1/forecast-lookup` | Instant lookup of predicted 24h API, MOE safety tier, weather outlook, 24h diurnal curve, and TreeSHAP values for a selected school/district, date/month, hour, and cohort. |
-| **POST** | `/api/v1/assess-event` | Evaluates an outdoor school event payload with full Pydantic MAAQS boundary validation and live XGBoost What-If override support. |
-| **GET** | `/api/v1/seasonal-planner` | Returns the 12-month seasonal air quality calendar, optimal month recommendation, and monsoon haze warnings for a selected district and cohort. |
-| **GET** | `/api/v1/analytics` | Supplies multi-day episode series, 26-station × 12-month heatmap cells, and Pearson correlation matrices for the D3.js Analytics Dashboard. |
-| **GET** | `/api/v1/events` | Lists all scheduled school outdoor events with their attached AI safety assessments. |
-| **POST** | `/api/v1/events` | Creates a new scheduled school outdoor event and automatically attaches its AI forecast. |
-| **PUT** | `/api/v1/events/{event_id}` | Updates or reschedules an existing school event (e.g., shifting to the cleanest morning hour or optimal month) and recomputes its AI safety badge. |
-| **DELETE** | `/api/v1/events/{event_id}` | Removes a scheduled school event from the calendar. |
-Here is a complete, beginner-friendly setup guide assuming your groupmates are starting from a completely blank laptop with nothing installed. You can copy and paste this directly to them:
+| **GET** | `/api/v1/health` | Service status, loaded model type, and precomputed record counts |
+| **GET** | `/api/v1/stations` | List of 26 monitoring stations and 4 regional corridors |
+| **GET** | `/api/v1/forecast-lookup` | Retrieves precomputed hourly forecasts, MOE directive, and SHAP data |
+| **POST** | `/api/v1/assess-event` | Evaluates event safety with optional live What-If weather overrides |
+| **GET** | `/api/v1/seasonal-planner` | Returns 12-month risk profiles and safest months for a given year |
+| **GET** | `/api/v1/analytics` | Provides time-series and correlation matrix data for D3.js charts |
+| **GET** | `/api/v1/events` | Retrieves all scheduled school outdoor events |
+| **POST** | `/api/v1/events` | Creates a new scheduled school outdoor event |
+| **PUT** | `/api/v1/events/{event_id}` | Updates or auto-reschedules an existing school outdoor event |
+| **DELETE** | `/api/v1/events/{event_id}` | Deletes a scheduled event |
 
-🚀 SchoolAir Full-Stack Setup Guide (From Scratch)
+---
 
-This guide walks you through setting up and running SchoolAir on a fresh computer (Windows or Mac).
+## 8. Regulatory Reference (MOE Circular No. 1/2019)
 
-Step 1: Install the Required Tools
+SchoolAir operationalizes the **Ministry of Education Malaysia Circular No. 1/2019 (Surat Pekeliling Ikhtisas Bil. 1/2019: Panduan Pengurusan Cuaca Panas dan Jerebu di Sekolah)**:
 
-Before touching the code, download and install these 3 free tools:
-
-1. Git    
-2. Node.js (LTS version)
-  ⚬ Download & install the LTS (Long Term Support) version from: https://nodejs.org/
-  ⚬ (This installs both node and npm).
-3. Python (version 3.10, 3.11, or 3.12)
-  ⚬ Download & install from: https://www.python.org/downloads/      
-
-**Verify Installations:**
-Open your terminal (Terminal on Mac, or Command Prompt / PowerShell on Windows) and run:
-
-    git --version
-    node -v
-    python --version
-
-If all three show version numbers, you are ready to proceed!
-
-Step 2: Clone the Project Repository
-
-Open your terminal, navigate to where you want to keep your project (e.g. Desktop), and clone the repo
-
-Step 3: Set Up and Run the Back-End (FastAPI)
-
-Open your terminal inside the computing-project folder:
-
-# 1. Enter the backend directory
-    cd backend
-
-# 2. Create an isolated Python virtual environment
-    python -m venv .venv
-
-# 3. Activate the virtual environment
-# --- If you are on Mac: ---
-    source .venv/bin/activate
-# --- If you are on Windows (Command Prompt): ---
-    .venv\Scripts\activate
-# On Windows (PowerShell):**
-.\.venv\Scripts\Activate.ps1**
-# 4. Install required libraries (FastAPI, XGBoost, Scikit-Learn, Pandas)
-    .\.venv\Scripts\pip.exe install -r requirements.txt
-
-# 5. Start the back-end server
-    python -m uvicorn main:app --reload
-
-⚬ Check if it works:
-  Open your web browser and visit:
-  👉 **http://localhost:8000/docs**
-  (You should see the interactive FastAPI Swagger page with all the APIs listed).
-
-👉 Leave this terminal open and running!
-
-Step 4: Set Up and Run the Front-End (React.js)
-
-Open a NEW terminal window or tab (keep the backend terminal running):
-
-# 1. Navigate to the project's frontend directory
-    cd computing-project/frontend
-
-# 2. Install all frontend packages (React 19, Material UI, D3.js)
-    npm install --legacy-peer-deps
-
-# 3. Start the front-end server
-    npm start
-
-⚬ Check if it works:
-  Your browser will automatically open:
-  👉 http://localhost:3000
-  (You should see the SchoolAir website with a green "Online" badge in the top right).
-
-💡** Daily Use (After the first-time setup above)**
-
-**⚬ Terminal 1 (Backend/window): skip activation method**
-
-      cd computing-project/backend
-  
-     .\.venv\Scripts\python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-
-**⚬ Terminal 1 (Backend/Mac): skip activation method**
-
-      cd computing-project/backend
-  
-    ./.venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-  
-**⚬ Terminal 2 (Frontend):**
-
-      cd computing-project/frontend
-  
-      npm start
+| API Range | Air Quality Status | MOE SOP Directive | System Badge |
+| :---: | :---: | :--- | :---: |
+| **0 – 50** | Good | All outdoor PE, assemblies, and sporting events proceed normally. | `SAFE` |
+| **51 – 100** | Moderate | Caution advised; shorten intense exertion; monitor respiratory-sensitive students. | `CAUTION` |
+| **101 – 200** | Unhealthy | Mandatory cessation of outdoor sports & assemblies; relocate activities indoors. | `MOVE INDOORS` |
+| **201 – 300** | Very Unhealthy | Complete suspension of outdoor activities; prepare campus closure protocols. | `TOTAL SUSPENSION` |
+| **> 300** | Hazardous | Immediate school closure and transition to Home-Based Learning (PdPR). | `EMERGENCY CLOSURE` |
