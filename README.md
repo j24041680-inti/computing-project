@@ -174,8 +174,9 @@ Open your terminal inside the computing-project folder:
     source .venv/bin/activate
 # --- If you are on Windows (Command Prompt): ---
     .venv\Scripts\activate
-
-# 4. Install required libraries (FastAPI, XGBoost, Scikit-Learn, Pandas)
+# On Windows (PowerShell):**
+.venv\Scripts\Activate.ps1**
+# ************4. Install required libraries (FastAPI, XGBoost, Scikit-Learn, Pandas)
     pip install -r requirements.txt
 
 # 5. Start the back-end server
