@@ -877,7 +877,7 @@ function App() {
                         sx={{ maxWidth: 640, mx: 'auto', mb: 3 }}
                       >
                         Select your state & district across Malaysia to check air quality and plan
-                        ahead for {selectedYear}–{selectedYear + 1}.
+                        ahead for 2026–2029.
                       </Typography>
 
                       {/* Clean Quick Lookup Bar: In 2x2 grid (iPad Mini), button centers in the middle */}
@@ -1005,7 +1005,7 @@ function App() {
                           color: '#7c3aed',
                         },
                         {
-                          value: `${selectedYear}–${selectedYear + 2}`,
+                          value: '2026–2029',
                           label: 'Multi-Year Planning Horizon',
                           icon: <CalendarIcon />,
                           color: '#0891b2',
