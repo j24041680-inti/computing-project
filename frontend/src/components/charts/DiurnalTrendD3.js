@@ -322,11 +322,16 @@ const DiurnalTrendD3 = ({
           </>
         ) : (
           <>
-            <Typography variant="caption" color="text.secondary">
-              Drag the <strong>grab handles</strong> below to zoom into a specific period
-            </Typography>
-            <Stack direction="row" spacing={1.5}>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: '#0f172a' }}>● Actual API</Typography>
+            <Box>
+              <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary', display: 'block', fontSize: '0.82rem' }}>
+                Benchmark 7-Day Severe Haze Episode (12–18 Sept 2019)
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Drag the <strong>grab handles</strong> below to zoom into any hour • Compares actual DOE ground sensor API vs. 24h XGBoost forecast
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Typography variant="caption" sx={{ fontWeight: 700, color: '#0f172a' }}>● Actual API (DOE Sensor)</Typography>
               <Typography variant="caption" sx={{ fontWeight: 700, color: '#2563eb' }}>--- XGBoost 24h Forecast</Typography>
             </Stack>
           </>

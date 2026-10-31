@@ -2009,7 +2009,7 @@ function App() {
                         sx={{ mb: 3 }}
                       >
                         <Tab label="Multi-Day Brush-Zoom (D3.js)" />
-                        <Tab label="12-Month & Correlation Heatmap (D3.js)" />
+                        <Tab label="12-Month Regional Heatmap (D3.js)" />
                       </Tabs>
 
                       {analyticsTab === 0 && analyticsData && (
@@ -2023,7 +2023,6 @@ function App() {
                       {analyticsTab === 1 && analyticsData && (
                         <SeasonalHeatmapD3
                           seasonalCells={analyticsData.seasonal_heatmap || []}
-                          correlationData={analyticsData.correlation_matrix}
                           selectedDistrict={analyticsDistrict}
                           corridorName={analyticsCorridor}
                           onSelectStationMonth={(dist, mInt) => {
