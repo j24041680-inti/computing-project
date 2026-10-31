@@ -4,24 +4,37 @@
  * Chart 4 (D3.js): Minimalist 12-Month Station Risk & Correlation Matrix
  * Unit: COS30049 Computing Technology Innovation Project (Group 7 - SchoolAir)
  *
- * Fix: Full cleanup on unmount to prevent stale D3 listeners blocking navigation.
+ * Updates:
+ *  - Connected station filter: Highlights or focuses on selectedDistrict.
+ *  - Allows instant toggling between "Focus: {selectedDistrict}" and "All Stations in {Corridor}".
+ *  - Full cleanup on unmount to prevent stale D3 listeners.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { Box, ToggleButton, ToggleButtonGroup, Chip, Typography } from '@mui/material';
+import { Box, ToggleButton, ToggleButtonGroup, Chip, Typography, Stack } from '@mui/material';
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const SeasonalHeatmapD3 = ({
   seasonalCells = [],
   correlationData = null,
+  selectedDistrict = 'Petaling Jaya',
+  corridorName = 'All Corridors',
   onSelectStationMonth = null,
 }) => {
   const svgRef = useRef(null);
   const [heatmapMode, setHeatmapMode] = useState('seasonal');
   const [metricField, setMetricField] = useState('planning_risk_index');
+  const [stationScope, setStationScope] = useState('selected');
   const [hoveredCell, setHoveredCell] = useState(null);
+
+  // Sync stationScope when "All Stations" is explicitly chosen in the parent dropdown
+  useEffect(() => {
+    if (selectedDistrict === 'All Stations') {
+      setStationScope('all');
+    }
+  }, [selectedDistrict]);
 
   useEffect(() => {
     const svgEl = svgRef.current;
@@ -36,10 +49,24 @@ const SeasonalHeatmapD3 = ({
     if (heatmapMode === 'seasonal') {
       if (!seasonalCells || seasonalCells.length === 0) return;
 
-      const districts = Array.from(new Set(seasonalCells.map((d) => d.district)));
-      const rowH = 26;
-      const margin = { top: 28, right: 16, bottom: 20, left: 125 };
-      const width = 660;
+      const isSpecificSelected = Boolean(selectedDistrict && selectedDistrict !== 'All Stations');
+
+      // Filter cells based on stationScope
+      let displayedCells = seasonalCells;
+      if (stationScope === 'selected' && isSpecificSelected) {
+        const filtered = seasonalCells.filter(
+          (d) => d.district?.toLowerCase() === selectedDistrict.toLowerCase()
+        );
+        if (filtered.length > 0) {
+          displayedCells = filtered;
+        }
+      }
+
+      const districts = Array.from(new Set(displayedCells.map((d) => d.district)));
+      const isSingleStation = districts.length === 1;
+      const rowH = isSingleStation ? 46 : 28;
+      const margin = { top: 32, right: 18, bottom: 22, left: isSingleStation ? 145 : 135 };
+      const width = 680;
       const height = margin.top + margin.bottom + districts.length * rowH;
 
       svg.attr('viewBox', `0 0 ${width} ${height}`);
@@ -70,16 +97,20 @@ const SeasonalHeatmapD3 = ({
 
       const cellGroups = g
         .selectAll('.cell-g')
-        .data(seasonalCells)
+        .data(displayedCells)
         .enter()
         .append('g')
         .style('cursor', 'pointer')
         .on('mouseenter', function (event, d) {
-          d3.select(this).select('rect').attr('stroke', '#0f172a').attr('stroke-width', 1.8);
+          d3.select(this).select('rect').attr('stroke', '#0f172a').attr('stroke-width', 2);
           setHoveredCell(d);
         })
-        .on('mouseleave', function () {
-          d3.select(this).select('rect').attr('stroke', 'none');
+        .on('mouseleave', function (event, d) {
+          const isSelected = isSpecificSelected && d.district?.toLowerCase() === selectedDistrict.toLowerCase();
+          d3.select(this)
+            .select('rect')
+            .attr('stroke', isSelected ? '#2563eb' : 'none')
+            .attr('stroke-width', isSelected ? 2 : 0);
           setHoveredCell(null);
         })
         .on('click', (_, d) => onSelectStationMonth && onSelectStationMonth(d.district, d.month));
@@ -91,14 +122,22 @@ const SeasonalHeatmapD3 = ({
         .attr('width', xScale.bandwidth())
         .attr('height', yScale.bandwidth())
         .attr('rx', 4)
-        .attr('fill', (d) => getColor(d[metricField]));
+        .attr('fill', (d) => getColor(d[metricField]))
+        .attr('stroke', (d) =>
+          isSpecificSelected && d.district?.toLowerCase() === selectedDistrict.toLowerCase()
+            ? '#2563eb'
+            : 'none'
+        )
+        .attr('stroke-width', (d) =>
+          isSpecificSelected && d.district?.toLowerCase() === selectedDistrict.toLowerCase() ? 2 : 0
+        );
 
       cellGroups
         .append('text')
         .attr('x', (d) => xScale(d.month_short) + xScale.bandwidth() / 2)
-        .attr('y', (d) => yScale(d.district) + yScale.bandwidth() / 2 + 3.5)
+        .attr('y', (d) => yScale(d.district) + yScale.bandwidth() / 2 + (isSingleStation ? 4.5 : 3.5))
         .attr('text-anchor', 'middle')
-        .attr('font-size', '9.5px')
+        .attr('font-size', isSingleStation ? '11px' : '9.5px')
         .attr('font-weight', '700')
         .attr('fill', (d) => getTextColor(d[metricField]))
         .text((d) => Number(d[metricField]).toFixed(0));
@@ -109,7 +148,17 @@ const SeasonalHeatmapD3 = ({
 
       const yAxis = g.append('g').call(d3.axisLeft(yScale).tickSize(0));
       yAxis.select('.domain').remove();
-      yAxis.selectAll('text').attr('font-size', '10.5px').attr('font-weight', '600').attr('fill', '#475569');
+      yAxis.selectAll('text')
+        .attr('font-size', isSingleStation ? '11.5px' : '10.5px')
+        .attr('font-weight', (d) =>
+          isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? '800' : '600'
+        )
+        .attr('fill', (d) =>
+          isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? '#1d4ed8' : '#475569'
+        )
+        .text((d) =>
+          isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? `▶ ${d}` : d
+        );
     } else {
       if (!correlationData || !correlationData.matrix) return;
 
@@ -141,9 +190,8 @@ const SeasonalHeatmapD3 = ({
         .enter()
         .append('g')
         .style('cursor', 'pointer')
-        .on('mouseenter', function (event, d) {
+        .on('mouseenter', function () {
           d3.select(this).select('rect').attr('stroke', '#0f172a').attr('stroke-width', 1.8);
-          setHoveredCell(d);
         })
         .on('mouseleave', function () {
           d3.select(this).select('rect').attr('stroke', 'none');
@@ -185,21 +233,40 @@ const SeasonalHeatmapD3 = ({
       svg.on('.brush', null);
       svg.on('.zoom', null);
     };
-  }, [seasonalCells, correlationData, heatmapMode, metricField, onSelectStationMonth]);
+  }, [seasonalCells, correlationData, heatmapMode, metricField, stationScope, selectedDistrict, onSelectStationMonth]);
+
+  const hasSpecificStation = Boolean(selectedDistrict && selectedDistrict !== 'All Stations');
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
-        <ToggleButtonGroup
-          size="small"
-          value={heatmapMode}
-          exclusive
-          onChange={(_, val) => val && setHeatmapMode(val)}
-          sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1.5, fontSize: '0.75rem', textTransform: 'none' } }}
-        >
-          <ToggleButton value="seasonal">12-Month Risk Matrix</ToggleButton>
-          <ToggleButton value="correlation">Feature Correlation (r)</ToggleButton>
-        </ToggleButtonGroup>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          <ToggleButtonGroup
+            size="small"
+            value={heatmapMode}
+            exclusive
+            onChange={(_, val) => val && setHeatmapMode(val)}
+            sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1.5, fontSize: '0.75rem', textTransform: 'none' } }}
+          >
+            <ToggleButton value="seasonal">12-Month Risk Matrix</ToggleButton>
+            <ToggleButton value="correlation">Feature Correlation (r)</ToggleButton>
+          </ToggleButtonGroup>
+
+          {heatmapMode === 'seasonal' && hasSpecificStation && (
+            <ToggleButtonGroup
+              size="small"
+              value={stationScope}
+              exclusive
+              onChange={(_, val) => val && setStationScope(val)}
+              sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1.25, fontSize: '0.72rem', textTransform: 'none' } }}
+            >
+              <ToggleButton value="selected">Focus: {selectedDistrict}</ToggleButton>
+              <ToggleButton value="all">
+                All Stations in {corridorName !== 'All Corridors' ? corridorName.replace(' Corridor', '') : 'Malaysia'}
+              </ToggleButton>
+            </ToggleButtonGroup>
+          )}
+        </Stack>
 
         {heatmapMode === 'seasonal' && (
           <ToggleButtonGroup
@@ -223,22 +290,33 @@ const SeasonalHeatmapD3 = ({
         aria-label="D3 Heatmap"
       />
 
-      <Box sx={{ minHeight: 26, mt: 1, textAlign: 'right' }}>
-        {hoveredCell ? (
-          <Chip
-            size="small"
-            label={
-              heatmapMode === 'seasonal'
-                ? `${hoveredCell.district} (${hoveredCell.month_short}): ${hoveredCell.planning_risk_index} Risk • ${hoveredCell.mean_temp}°C (Click to inspect)`
-                : `${hoveredCell.rowLabel} × ${hoveredCell.colLabel}: r = ${hoveredCell.r.toFixed(3)}`
-            }
-            sx={{ fontWeight: 600, bgcolor: '#eff6ff', color: '#1d4ed8' }}
-          />
-        ) : (
-          <Typography variant="caption" color="text.secondary">
-            {heatmapMode === 'seasonal' ? 'Click any station-month cell to open in Safety Checker' : 'Hover any cell for Pearson correlation'}
-          </Typography>
-        )}
+      <Box sx={{ minHeight: 26, mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+        <Typography variant="caption" color="text.secondary">
+          {heatmapMode === 'seasonal' && stationScope === 'all' && hasSpecificStation && (
+            <span>
+              Highlighted: <strong style={{ color: '#1d4ed8' }}>▶ {selectedDistrict}</strong> (selected station)
+            </span>
+          )}
+        </Typography>
+        <Box sx={{ ml: 'auto' }}>
+          {hoveredCell ? (
+            <Chip
+              size="small"
+              label={
+                heatmapMode === 'seasonal'
+                  ? `${hoveredCell.district} (${hoveredCell.month_short}): ${hoveredCell.planning_risk_index} Risk • ${hoveredCell.mean_temp}°C (Click to inspect)`
+                  : `${hoveredCell.rowLabel} × ${hoveredCell.colLabel}: r = ${hoveredCell.r?.toFixed(3)}`
+              }
+              sx={{ fontWeight: 600, bgcolor: '#eff6ff', color: '#1d4ed8' }}
+            />
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              {heatmapMode === 'seasonal'
+                ? 'Click any station-month cell to open in Safety Checker'
+                : 'Hover any cell for Pearson correlation'}
+            </Typography>
+          )}
+        </Box>
       </Box>
     </Box>
   );

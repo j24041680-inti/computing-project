@@ -193,27 +193,28 @@ const DiurnalTrendD3 = ({
     const indoorsMax = thresholds?.indoors_max || 200;
 
     const maxDataVal = d3.max(parsedData, (d) => Math.max(d.actual_api, d.pred_api)) || 100;
-    const yMax = Math.max(Math.ceil((maxDataVal * 1.15) / 50) * 50, indoorsMax * 1.1, 220);
-    const yFocus = d3.scaleLinear().domain([0, yMax]).range([focusH, 0]).nice();
-    const yContext = d3.scaleLinear().domain([0, yMax]).range([contextH, 0]).nice();
+    const computedMax = Math.max(Math.ceil((maxDataVal * 1.15) / 50) * 50, indoorsMax * 1.1, 200);
+    const yFocus = d3.scaleLinear().domain([0, computedMax]).range([focusH, 0]).nice();
+    const domainCeiling = yFocus.domain()[1];
+    const yContext = d3.scaleLinear().domain([0, domainCeiling]).range([contextH, 0]);
 
     const focus = svg.append('g').attr('transform', `translate(${marginFocus.left}, ${marginFocus.top})`);
     const context = svg.append('g').attr('transform', `translate(${marginContext.left}, ${marginContext.top})`);
 
-    // Bands (strictly clamped to yMax so rectangles never exceed the chart canvas)
+    // Bands (fill continuous vertical space from y=0 to y=focusH with zero top gap)
     if (showBands) {
       const bands = [];
-      if (safeMax > 0 && yMax > 0) {
-        bands.push({ min: 0, max: Math.min(safeMax, yMax), color: 'rgba(34, 197, 94, 0.08)' });
+      if (safeMax > 0 && domainCeiling > 0) {
+        bands.push({ min: 0, max: Math.min(safeMax, domainCeiling), color: 'rgba(34, 197, 94, 0.08)' });
       }
-      if (cautionMax > safeMax && yMax > safeMax) {
-        bands.push({ min: safeMax, max: Math.min(cautionMax, yMax), color: 'rgba(234, 179, 8, 0.08)' });
+      if (cautionMax > safeMax && domainCeiling > safeMax) {
+        bands.push({ min: safeMax, max: Math.min(cautionMax, domainCeiling), color: 'rgba(234, 179, 8, 0.08)' });
       }
-      if (indoorsMax > cautionMax && yMax > cautionMax) {
-        bands.push({ min: cautionMax, max: Math.min(indoorsMax, yMax), color: 'rgba(249, 115, 22, 0.08)' });
+      if (indoorsMax > cautionMax && domainCeiling > cautionMax) {
+        bands.push({ min: cautionMax, max: Math.min(indoorsMax, domainCeiling), color: 'rgba(249, 115, 22, 0.08)' });
       }
-      if (yMax > indoorsMax) {
-        bands.push({ min: indoorsMax, max: yMax, color: 'rgba(239, 68, 68, 0.08)' });
+      if (domainCeiling > indoorsMax) {
+        bands.push({ min: indoorsMax, max: domainCeiling, color: 'rgba(239, 68, 68, 0.08)' });
       }
 
       bands.forEach((b) => {
@@ -226,7 +227,7 @@ const DiurnalTrendD3 = ({
       });
 
       [safeMax, cautionMax, indoorsMax].forEach((v) => {
-        if (v < yMax) {
+        if (v < domainCeiling) {
           focus.append('line')
             .attr('x1', 0)
             .attr('x2', innerW)

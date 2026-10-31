@@ -786,6 +786,13 @@ def get_analytics_dashboard_data(
     target_district = district if isinstance(district, str) else "Petaling Jaya"
     target_corridor = corridor if isinstance(corridor, str) else "All Corridors"
 
+    if target_district == "All Stations":
+        if target_corridor and target_corridor != "All Corridors":
+            corr_matches = LOCATIONS_DF[LOCATIONS_DF["corridor"] == target_corridor]["district"].tolist()
+            target_district = corr_matches[0] if corr_matches else "Petaling Jaya"
+        else:
+            target_district = "Petaling Jaya"
+
     ep_sub = MULTIDAY_EPISODES_DF[MULTIDAY_EPISODES_DF["district"].str.lower() == target_district.lower()]
     if ep_sub.empty:
         ep_sub = MULTIDAY_EPISODES_DF[MULTIDAY_EPISODES_DF["district"] == "Petaling Jaya"]

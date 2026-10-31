@@ -1989,6 +1989,7 @@ function App() {
                             value={analyticsDistrict}
                             onChange={(e) => setAnalyticsDistrict(e.target.value)}
                           >
+                            <MenuItem value="All Stations">All Stations</MenuItem>
                             {filteredAnalyticsStations.map((st) => (
                               <MenuItem key={st.district} value={st.district}>
                                 {st.district}
@@ -2009,7 +2010,6 @@ function App() {
                       >
                         <Tab label="Multi-Day Brush-Zoom (D3.js)" />
                         <Tab label="12-Month & Correlation Heatmap (D3.js)" />
-                        <Tab label="Gauge & SHAP Breakdown (D3.js)" />
                       </Tabs>
 
                       {analyticsTab === 0 && analyticsData && (
@@ -2024,32 +2024,14 @@ function App() {
                         <SeasonalHeatmapD3
                           seasonalCells={analyticsData.seasonal_heatmap || []}
                           correlationData={analyticsData.correlation_matrix}
+                          selectedDistrict={analyticsDistrict}
+                          corridorName={analyticsCorridor}
                           onSelectStationMonth={(dist, mInt) => {
                             setSelectedDistrict(dist);
                             handleMonthChange(mInt);
                             navigate('/checker');
                           }}
                         />
-                      )}
-
-                      {analyticsTab === 2 && assessment && (
-                        <Box
-                          sx={{
-                            display: 'grid',
-                            gridTemplateColumns: { xs: '1fr', lg: '5fr 7fr' },
-                            gap: 3,
-                          }}
-                        >
-                          <SafetyGaugeD3
-                            predictedApi={assessment.prediction?.predicted_api}
-                            peakWindowApi={assessment.prediction?.peak_window_api}
-                            badgeColor={assessment.moe_safety?.badge_color}
-                            thresholds={assessment.moe_safety?.thresholds}
-                          />
-                          <ShapAttributionD3
-                            attributions={assessment.shap_attributions || []}
-                          />
-                        </Box>
                       )}
                     </Card>
                   </Stack>
