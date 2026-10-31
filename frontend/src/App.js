@@ -372,6 +372,11 @@ function App() {
     return stations.filter((s) => s.state?.toLowerCase() === selectedState.toLowerCase());
   }, [stations, selectedState]);
 
+  const filteredAnalyticsStations = useMemo(() => {
+    if (!analyticsCorridor || analyticsCorridor === 'All Corridors') return stations;
+    return stations.filter((s) => s.corridor === analyticsCorridor);
+  }, [stations, analyticsCorridor]);
+
   const fetchInitialData = useCallback(async () => {
     try {
       const [dirRes, evRes] = await Promise.all([
@@ -481,6 +486,18 @@ function App() {
         : stations.filter((s) => s.state?.toLowerCase() === stateName.toLowerCase());
     if (validStations.length > 0) {
       setSelectedDistrict(validStations[0].district);
+    }
+  };
+
+  const handleAnalyticsCorridorChange = (newCorridor) => {
+    setAnalyticsCorridor(newCorridor);
+    const validStations =
+      newCorridor === 'All Corridors'
+        ? stations
+        : stations.filter((s) => s.corridor === newCorridor);
+    if (validStations.length > 0 && !validStations.some((s) => s.district === analyticsDistrict)) {
+      setAnalyticsDistrict(validStations[0].district);
+      showNotice(`Filtered stations to ${newCorridor}.`);
     }
   };
 
@@ -1956,7 +1973,7 @@ function App() {
                             fullWidth
                             label="Corridor"
                             value={analyticsCorridor}
-                            onChange={(e) => setAnalyticsCorridor(e.target.value)}
+                            onChange={(e) => handleAnalyticsCorridorChange(e.target.value)}
                           >
                             <MenuItem value="All Corridors">All Corridors</MenuItem>
                             {corridors.map((c) => (
@@ -1972,7 +1989,7 @@ function App() {
                             value={analyticsDistrict}
                             onChange={(e) => setAnalyticsDistrict(e.target.value)}
                           >
-                            {stations.map((st) => (
+                            {filteredAnalyticsStations.map((st) => (
                               <MenuItem key={st.district} value={st.district}>
                                 {st.district}
                               </MenuItem>
