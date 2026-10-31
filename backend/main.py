@@ -84,6 +84,9 @@ try:
     MONTHLY_SUMMARY_DF = pd.read_csv(os.path.join(DATA_DIR, "precomputed_monthly_summary.csv"))
     MULTIDAY_EPISODES_DF = pd.read_csv(os.path.join(DATA_DIR, "precomputed_multiday_episodes.csv"))
 
+    schools_file = os.path.join(DATA_DIR, "schools_directory.csv")
+    SCHOOLS_DF = pd.read_csv(schools_file) if os.path.exists(schools_file) else pd.DataFrame()
+
     with open(os.path.join(DATA_DIR, "analytics_metadata.json"), "r", encoding="utf-8") as f:
         ANALYTICS_META = json.load(f)
 except Exception as load_err:
@@ -184,7 +187,8 @@ def find_nearest_station(lat: float, lon: float) -> Dict[str, Any]:
 
 
 def evaluate_moe_directive(predicted_api: float, cohort: str = "general", activity_type: str = "Standard PE Class") -> Dict[str, Any]:
-    cohort_key = (cohort or "general").lower().strip()
+    cohort_str = cohort if isinstance(cohort, str) else "general"
+    cohort_key = cohort_str.lower().strip()
 
     if cohort_key in ("asthmatic", "sensitive", "cohort_c"):
         safe_limit, caution_limit, indoors_limit = 42.0, 75.0, 150.0
@@ -567,8 +571,9 @@ def get_system_health():
 @app.get("/api/v1/stations", tags=["Geospatial & Directory"])
 def get_stations_and_schools(corridor: Optional[str] = Query(default=None)):
     loc_sub = LOCATIONS_DF.copy()
-    if corridor and corridor != "All Corridors":
-        loc_sub = loc_sub[loc_sub["corridor"] == corridor]
+    target_corridor = corridor if isinstance(corridor, str) else None
+    if target_corridor and target_corridor != "All Corridors":
+        loc_sub = loc_sub[loc_sub["corridor"] == target_corridor]
 
     station_means = MONTHLY_SUMMARY_DF.groupby("district", as_index=False).agg(
         annual_mean_api=("pred_mean_api", "mean"),
@@ -576,37 +581,132 @@ def get_stations_and_schools(corridor: Optional[str] = Query(default=None)):
     ).round(1)
     loc_merged = pd.merge(loc_sub, station_means, on="district", how="left")
 
+    schools_list = SCHOOLS_DF.to_dict(orient="records") if not SCHOOLS_DF.empty else []
+    if target_corridor and target_corridor != "All Corridors":
+        schools_list = [s for s in schools_list if s.get("corridor") == target_corridor]
+
     return {
         "status": "success",
         "corridors": ["Central Corridor", "Northern Corridor", "Southern Corridor", "East Malaysia"],
         "stations": loc_merged.to_dict(orient="records"),
+        "schools": schools_list,
+    }
+
+
+@app.get("/api/v1/schools", tags=["Geospatial & Directory"])
+def get_schools_directory(
+    state: Optional[str] = Query(default=None),
+    district: Optional[str] = Query(default=None),
+    corridor: Optional[str] = Query(default=None),
+):
+    if SCHOOLS_DF.empty:
+        return {"status": "success", "count": 0, "schools": []}
+    sub = SCHOOLS_DF.copy()
+    if isinstance(state, str) and state and state != "All States":
+        sub = sub[sub["state"].str.lower() == state.lower()]
+    if isinstance(district, str) and district:
+        sub = sub[sub["matched_district"].str.lower() == district.lower()]
+    if isinstance(corridor, str) and corridor and corridor != "All Corridors":
+        sub = sub[sub["corridor"] == corridor]
+    return {
+        "status": "success",
+        "count": len(sub),
+        "schools": sub.to_dict(orient="records"),
+    }
+
+
+@app.get("/api/v1/compare-districts", tags=["AI Forecast Lookup"])
+def compare_districts_air_quality(
+    district_a: str = Query(default="Petaling Jaya"),
+    district_b: str = Query(default="Shah Alam"),
+    month: int = Query(default=4, ge=1, le=12),
+    start_hour: int = Query(default=8, ge=0, le=23),
+    cohort: str = Query(default="general"),
+):
+    target_a = district_a if isinstance(district_a, str) else "Petaling Jaya"
+    target_b = district_b if isinstance(district_b, str) else "Shah Alam"
+    target_month = month if isinstance(month, int) else 4
+    target_hour = start_hour if isinstance(start_hour, int) else 8
+    target_cohort = cohort if isinstance(cohort, str) else "general"
+
+    res_a = compute_event_assessment(EventAssessmentRequest(
+        district=target_a,
+        month=target_month,
+        start_hour=target_hour,
+        cohort=target_cohort,
+    ))
+    res_b = compute_event_assessment(EventAssessmentRequest(
+        district=target_b,
+        month=target_month,
+        start_hour=target_hour,
+        cohort=target_cohort,
+    ))
+
+    api_a = res_a["prediction"]["predicted_api"]
+    api_b = res_b["prediction"]["predicted_api"]
+    diff = round(abs(api_a - api_b), 1)
+
+    if api_a < api_b:
+        recommendation = f"{target_a} is cleaner by {diff} API points compared to {target_b}."
+        preferred = target_a
+    elif api_b < api_a:
+        recommendation = f"{target_b} is cleaner by {diff} API points compared to {target_a}."
+        preferred = target_b
+    else:
+        recommendation = f"Both {target_a} and {target_b} exhibit identical expected API ({api_a})."
+        preferred = "Equal"
+
+    return {
+        "status": "success",
+        "month": target_month,
+        "hour": target_hour,
+        "cohort": target_cohort,
+        "preferred_district": preferred,
+        "api_difference": diff,
+        "recommendation": recommendation,
+        "district_a": {
+            "district": target_a,
+            "predicted_api": api_a,
+            "tier_label": res_a["moe_safety"]["tier_label"],
+            "badge_color": res_a["moe_safety"]["badge_color"],
+            "temperature": res_a["weather_outlook"]["temperature"],
+            "humidity": res_a["weather_outlook"]["humidity"],
+        },
+        "district_b": {
+            "district": target_b,
+            "predicted_api": api_b,
+            "tier_label": res_b["moe_safety"]["tier_label"],
+            "badge_color": res_b["moe_safety"]["badge_color"],
+            "temperature": res_b["weather_outlook"]["temperature"],
+            "humidity": res_b["weather_outlook"]["humidity"],
+        },
     }
 
 
 @app.get("/api/v1/forecast-lookup", tags=["AI Forecast Lookup"])
 def get_forecast_lookup(
-    district: str = Query(default="Petaling Jaya"),
-    school_id: Optional[str] = Query(default=None),
-    custom_school_name: Optional[str] = Query(default=None),
-    event_date: Optional[str] = Query(default="2026-04-15"),
-    month: int = Query(default=4, ge=1, le=12),
-    start_hour: int = Query(default=8, ge=0, le=23),
-    duration_hours: int = Query(default=2, ge=1, le=12),
-    activity_type: str = Query(default="Annual Sports Day"),
-    cohort: str = Query(default="general"),
-    weather_regime: str = Query(default="typical"),
+    district: str = "Petaling Jaya",
+    school_id: Optional[str] = None,
+    custom_school_name: Optional[str] = None,
+    event_date: Optional[str] = "2026-04-15",
+    month: int = 4,
+    start_hour: int = 8,
+    duration_hours: int = 2,
+    activity_type: str = "Annual Sports Day",
+    cohort: str = "general",
+    weather_regime: str = "typical",
 ):
     req_obj = EventAssessmentRequest(
-        school_id=school_id,
-        district=district,
-        custom_school_name=custom_school_name,
-        event_date=event_date,
-        month=month,
-        start_hour=start_hour,
-        duration_hours=duration_hours,
-        activity_type=activity_type,
-        cohort=cohort,
-        weather_regime=weather_regime,
+        school_id=school_id if isinstance(school_id, str) else None,
+        district=district if isinstance(district, str) else "Petaling Jaya",
+        custom_school_name=custom_school_name if isinstance(custom_school_name, str) else None,
+        event_date=event_date if isinstance(event_date, str) else "2026-04-15",
+        month=month if isinstance(month, int) else 4,
+        start_hour=start_hour if isinstance(start_hour, int) else 8,
+        duration_hours=duration_hours if isinstance(duration_hours, int) else 2,
+        activity_type=activity_type if isinstance(activity_type, str) else "Annual Sports Day",
+        cohort=cohort if isinstance(cohort, str) else "general",
+        weather_regime=weather_regime if isinstance(weather_regime, str) else "typical",
     )
     return compute_event_assessment(req_obj)
 
@@ -623,7 +723,12 @@ def get_seasonal_planner(
     weather_regime: str = Query(default="typical"),
     year: int = Query(default=2026, ge=2024, le=2035),
 ):
-    sub = MONTHLY_SUMMARY_DF[MONTHLY_SUMMARY_DF["district"].str.lower() == district.lower()].sort_values("month")
+    target_district = district if isinstance(district, str) else "Petaling Jaya"
+    target_cohort = cohort if isinstance(cohort, str) else "general"
+    target_regime = weather_regime if isinstance(weather_regime, str) else "typical"
+    target_year = year if isinstance(year, int) else 2026
+
+    sub = MONTHLY_SUMMARY_DF[MONTHLY_SUMMARY_DF["district"].str.lower() == target_district.lower()].sort_values("month")
     if sub.empty:
         raise HTTPException(status_code=404, detail=f"District '{district}' not found.")
 
@@ -632,8 +737,8 @@ def get_seasonal_planner(
 
     for _, row in sub.iterrows():
         m_int = int(row["month"])
-        effective_api = float(row["pred_peak_haze_api"] if weather_regime == "peak_haze" else row["planning_risk_index"])
-        moe_info = evaluate_moe_directive(effective_api, cohort, "Outdoor School Event")
+        effective_api = float(row["pred_peak_haze_api"] if target_regime == "peak_haze" else row["planning_risk_index"])
+        moe_info = evaluate_moe_directive(effective_api, target_cohort, "Outdoor School Event")
         tier_counts[moe_info["tier_label"]] = tier_counts.get(moe_info["tier_label"], 0) + 1
 
         months_output.append({
@@ -662,9 +767,9 @@ def get_seasonal_planner(
         "district": str(sub.iloc[0]["district"]),
         "state": str(sub.iloc[0]["state"]),
         "corridor": str(sub.iloc[0]["corridor"]),
-        "year": year,
-        "cohort": cohort,
-        "weather_regime": weather_regime,
+        "year": target_year,
+        "cohort": target_cohort,
+        "weather_regime": target_regime,
         "optimal_month": best_months[0],
         "recommended_months": [m["month_name"] for m in best_months],
         "high_risk_months": [m["month_name"] for m in avoid_months],
@@ -678,13 +783,16 @@ def get_analytics_dashboard_data(
     district: str = Query(default="Petaling Jaya"),
     corridor: str = Query(default="All Corridors"),
 ):
-    ep_sub = MULTIDAY_EPISODES_DF[MULTIDAY_EPISODES_DF["district"].str.lower() == district.lower()]
+    target_district = district if isinstance(district, str) else "Petaling Jaya"
+    target_corridor = corridor if isinstance(corridor, str) else "All Corridors"
+
+    ep_sub = MULTIDAY_EPISODES_DF[MULTIDAY_EPISODES_DF["district"].str.lower() == target_district.lower()]
     if ep_sub.empty:
         ep_sub = MULTIDAY_EPISODES_DF[MULTIDAY_EPISODES_DF["district"] == "Petaling Jaya"]
 
     heat_df = MONTHLY_SUMMARY_DF.copy()
-    if corridor and corridor != "All Corridors":
-        heat_df = heat_df[heat_df["corridor"] == corridor]
+    if target_corridor and target_corridor != "All Corridors":
+        heat_df = heat_df[heat_df["corridor"] == target_corridor]
 
     heatmap_cells = []
     for _, row in heat_df.iterrows():
@@ -722,8 +830,9 @@ def get_analytics_dashboard_data(
 @app.get("/api/v1/events", tags=["School Event Schedule CRUD"])
 def list_scheduled_events(corridor: Optional[str] = Query(default=None)):
     events = load_scheduled_events()
-    if corridor and corridor != "All Corridors":
-        events = [e for e in events if e.get("corridor") == corridor]
+    target_corridor = corridor if isinstance(corridor, str) else None
+    if target_corridor and target_corridor != "All Corridors":
+        events = [e for e in events if e.get("corridor") == target_corridor]
     return {"status": "success", "count": len(events), "events": events}
 
 
