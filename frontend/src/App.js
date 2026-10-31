@@ -55,9 +55,6 @@ import {
   Tooltip,
   Avatar,
   Paper,
-  Checkbox,
-  FormGroup,
-  FormControlLabel,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -81,7 +78,6 @@ import {
   Cloud as CloudIcon,
   LocationOn as LocationIcon,
   CompareArrows as CompareIcon,
-  AssignmentTurnedIn as ChecklistIcon,
 } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -99,31 +95,6 @@ import {
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:8000/api/v1';
 
 
-const MOE_SOP_CHECKLIST = {
-  safe: [
-    { id: 's1', text: 'All outdoor physical education, morning assemblies, and co-curricular sporting events proceed normally.' },
-    { id: 's2', text: 'Ensure active hydration stations and remind students to take hydration breaks every 30 minutes.' },
-    { id: 's3', text: 'Maintain routine visual weather observation and continuous SchoolAir monitoring.' },
-  ],
-  caution: [
-    { id: 'c1', text: 'Notify PE teachers and coaches to shorten high-intensity sprints and vigorous field drills.' },
-    { id: 'c2', text: 'Schedule mandatory shaded rest intervals every 20 minutes with hydration.' },
-    { id: 'c3', text: 'Field-side inhaler check: Verify all asthmatic and respiratory-sensitive students have medication accessible.' },
-    { id: 'c4', text: 'Consider shifting high-intensity events to the recommended clean morning window (07:00–10:00).' },
-  ],
-  move: [
-    { id: 'm1', text: 'Mandatory cessation of all outdoor physical education, field sports, and open-air assemblies (MOE Circular 1/2019).' },
-    { id: 'm2', text: 'Relocate scheduled school activities to covered or enclosed school halls with mechanical ventilation.' },
-    { id: 'm3', text: 'Exempt all Cohort C (asthmatic / respiratory sensitive) students from physical exertion immediately.' },
-    { id: 'm4', text: 'Designate school health officer to log hourly API updates from SchoolAir.' },
-  ],
-  suspend: [
-    { id: 't1', text: 'Immediate total cancellation of all outdoor school events under MOE Haze Emergency Directive.' },
-    { id: 't2', text: 'Convene school disaster management committee to assess campus closure and transition to PdPR.' },
-    { id: 't3', text: 'Distribute N95 masks to students awaiting transport in air-conditioned / sheltered holding rooms.' },
-    { id: 't4', text: 'File formal incident advisory with the District Education Office (PPD).' },
-  ],
-};
 
 const ACTIVITY_OPTIONS = [
   'Annual Sports Day (Hari Sukan)',
@@ -304,8 +275,6 @@ function App() {
   const [newEventTitle, setNewEventTitle] = useState('Annual Inter-House Sports Day');
   const [newEventParticipants, setNewEventParticipants] = useState(200);
   const [schools, setSchools] = useState([]);
-  const [checklistState, setChecklistState] = useState({});
-  const [memorandumOpen, setMemorandumOpen] = useState(false);
   const [compareDistrictA, setCompareDistrictA] = useState('Petaling Jaya');
   const [compareDistrictB, setCompareDistrictB] = useState('Shah Alam');
   const [comparisonData, setComparisonData] = useState(null);
@@ -1202,14 +1171,6 @@ function App() {
                           <Button
                             size="small"
                             variant="outlined"
-                            startIcon={<ChecklistIcon />}
-                            onClick={() => setMemorandumOpen(true)}
-                          >
-                            Directive Memo
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
                             startIcon={<DownloadIcon />}
                             onClick={() => exportAssessmentToCsv(assessment)}
                           >
@@ -1473,93 +1434,6 @@ function App() {
                       </Box>
                     )}
 
-                    {/* MOE Circular No. 1/2019 SOP Action Checklist Card */}
-                    {assessment && (
-                      <Card sx={{ p: { xs: 2, sm: 2.5 } }}>
-                        <Stack
-                          direction={{ xs: 'column', sm: 'row' }}
-                          justifyContent="space-between"
-                          alignItems={{ xs: 'flex-start', sm: 'center' }}
-                          spacing={1}
-                          sx={{ mb: 1.5 }}
-                        >
-                          <Box>
-                            <Stack direction="row" alignItems="center" spacing={1}>
-                              <ChecklistIcon color="primary" fontSize="small" />
-                              <Typography variant="h6">
-                                MOE Circular No. 1/2019 SOP Action Checklist
-                              </Typography>
-                            </Stack>
-                            <Typography variant="caption" color="text.secondary">
-                              Mandatory school administrator & PE teacher verification for <strong>{assessment.moe_safety?.tier_label}</strong> tier ({assessment.moe_safety?.cohort_label})
-                            </Typography>
-                          </Box>
-                          <Button
-                            size="small"
-                            variant="contained"
-                            startIcon={<PrintIcon />}
-                            onClick={() => setMemorandumOpen(true)}
-                            sx={{ bgcolor: '#0f172a' }}
-                          >
-                            Sign & Print Directive
-                          </Button>
-                        </Stack>
-
-                        {(() => {
-                          const currentList = MOE_SOP_CHECKLIST[assessment.moe_safety?.risk_key] || MOE_SOP_CHECKLIST.safe;
-                          const checkedCount = currentList.filter(item => !!checklistState[item.id]).length;
-                          const sopPercentage = Math.round((checkedCount / (currentList.length || 1)) * 100);
-                          return (
-                            <Box>
-                              <Box sx={{ mb: 2 }}>
-                                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
-                                  <Typography variant="caption" sx={{ fontWeight: 700 }}>Precautionary SOP Verification</Typography>
-                                  <Typography variant="caption" color="text.secondary">
-                                    {checkedCount} of {currentList.length} Actions Completed ({sopPercentage}%)
-                                  </Typography>
-                                </Stack>
-                                <LinearProgress
-                                  variant="determinate"
-                                  value={sopPercentage}
-                                  sx={{
-                                    height: 8,
-                                    borderRadius: 4,
-                                    bgcolor: '#e2e8f0',
-                                    '& .MuiLinearProgress-bar': { bgcolor: assessment.moe_safety?.badge_color || '#2563eb' },
-                                  }}
-                                />
-                              </Box>
-                              <FormGroup>
-                                {currentList.map((item) => (
-                                  <FormControlLabel
-                                    key={item.id}
-                                    control={
-                                      <Checkbox
-                                        size="small"
-                                        checked={!!checklistState[item.id]}
-                                        onChange={() => setChecklistState(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
-                                      />
-                                    }
-                                    label={
-                                      <Typography
-                                        variant="body2"
-                                        sx={{
-                                          fontWeight: checklistState[item.id] ? 600 : 400,
-                                          color: checklistState[item.id] ? 'text.primary' : 'text.secondary',
-                                          textDecoration: checklistState[item.id] ? 'line-through' : 'none',
-                                        }}
-                                      >
-                                        {item.text}
-                                      </Typography>
-                                    }
-                                  />
-                                ))}
-                              </FormGroup>
-                            </Box>
-                          );
-                        })()}
-                      </Card>
-                    )}
                   </Stack>
                 }
               />
@@ -1569,103 +1443,6 @@ function App() {
                 path="/planner"
                 element={
                   <Stack spacing={2.5}>
-                    {/* Inter-School Campus Air Quality Comparison Tool */}
-                    <Card sx={{ p: { xs: 2, sm: 2.5 } }}>
-                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1.5} sx={{ mb: 2 }}>
-                        <Box>
-                          <Stack direction="row" alignItems="center" spacing={1}>
-                            <CompareIcon color="primary" />
-                            <Typography variant="h6">Inter-School Campus Air Comparison Tool</Typography>
-                          </Stack>
-                          <Typography variant="caption" color="text.secondary">
-                            Compare expected air quality between two hosting campuses or districts side-by-side for inter-school sports events.
-                          </Typography>
-                        </Box>
-                        <Button
-                          size="small"
-                          variant="contained"
-                          startIcon={<CompareIcon />}
-                          onClick={handleCompareDistricts}
-                          disabled={comparisonLoading}
-                        >
-                          {comparisonLoading ? 'Comparing...' : 'Run Campus Comparison'}
-                        </Button>
-                      </Stack>
-
-                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
-                        <TextField
-                          select
-                          fullWidth
-                          label="Primary Campus / District A"
-                          value={compareDistrictA}
-                          onChange={(e) => setCompareDistrictA(e.target.value)}
-                        >
-                          {stations.map((s) => (
-                            <MenuItem key={s.district} value={s.district}>
-                              {s.district} ({s.state})
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                        <TextField
-                          select
-                          fullWidth
-                          label="Alternative Host Campus / District B"
-                          value={compareDistrictB}
-                          onChange={(e) => setCompareDistrictB(e.target.value)}
-                        >
-                          {stations.map((s) => (
-                            <MenuItem key={s.district} value={s.district}>
-                              {s.district} ({s.state})
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                      </Box>
-
-                      {comparisonData && (
-                        <Box sx={{ mt: 1 }}>
-                          <Alert severity="info" sx={{ mb: 2 }}>
-                            <strong>Recommendation:</strong> {comparisonData.recommendation}
-                          </Alert>
-                          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                            <Card sx={{ p: 2, border: comparisonData.preferred_district === comparisonData.district_a.district ? '2px solid #16a34a' : '1px solid #e2e8f0' }}>
-                              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{comparisonData.district_a.district}</Typography>
-                                {comparisonData.preferred_district === comparisonData.district_a.district && (
-                                  <Chip label="Cleaner Option" color="success" size="small" sx={{ fontWeight: 700 }} />
-                                )}
-                              </Stack>
-                              <Typography variant="h4" sx={{ fontWeight: 900, color: comparisonData.district_a.badge_color, my: 1 }}>
-                                {comparisonData.district_a.predicted_api} API
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                MOE Tier: <strong>{comparisonData.district_a.tier_label}</strong>
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary" display="block">
-                                Weather: {comparisonData.district_a.temperature}°C • {comparisonData.district_a.humidity}% RH
-                              </Typography>
-                            </Card>
-
-                            <Card sx={{ p: 2, border: comparisonData.preferred_district === comparisonData.district_b.district ? '2px solid #16a34a' : '1px solid #e2e8f0' }}>
-                              <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{comparisonData.district_b.district}</Typography>
-                                {comparisonData.preferred_district === comparisonData.district_b.district && (
-                                  <Chip label="Cleaner Option" color="success" size="small" sx={{ fontWeight: 700 }} />
-                                )}
-                              </Stack>
-                              <Typography variant="h4" sx={{ fontWeight: 900, color: comparisonData.district_b.badge_color, my: 1 }}>
-                                {comparisonData.district_b.predicted_api} API
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                MOE Tier: <strong>{comparisonData.district_b.tier_label}</strong>
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary" display="block">
-                                Weather: {comparisonData.district_b.temperature}°C • {comparisonData.district_b.humidity}% RH
-                              </Typography>
-                            </Card>
-                          </Box>
-                        </Box>
-                      )}
-                    </Card>
                     {/* Minimal Title Header with Buttons */}
                     <PageHeader
                       title="12-Month Seasonal Event Planner"
@@ -1915,6 +1692,104 @@ function App() {
                         </Card>
                       </Box>
                     )}
+
+                    {/* Inter-School Campus Air Quality Comparison Tool */}
+                    <Card sx={{ p: { xs: 2, sm: 2.5 } }}>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1.5} sx={{ mb: 2 }}>
+                        <Box>
+                          <Stack direction="row" alignItems="center" spacing={1}>
+                            <CompareIcon color="primary" />
+                            <Typography variant="h6">Inter-School Campus Air Comparison Tool</Typography>
+                          </Stack>
+                          <Typography variant="caption" color="text.secondary">
+                            Compare expected air quality between two hosting campuses or districts side-by-side for inter-school sports events.
+                          </Typography>
+                        </Box>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          startIcon={<CompareIcon />}
+                          onClick={handleCompareDistricts}
+                          disabled={comparisonLoading}
+                        >
+                          {comparisonLoading ? 'Comparing...' : 'Run Campus Comparison'}
+                        </Button>
+                      </Stack>
+
+                      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
+                        <TextField
+                          select
+                          fullWidth
+                          label="Primary Campus / District A"
+                          value={compareDistrictA}
+                          onChange={(e) => setCompareDistrictA(e.target.value)}
+                        >
+                          {stations.map((s) => (
+                            <MenuItem key={s.district} value={s.district}>
+                              {s.district} ({s.state})
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                        <TextField
+                          select
+                          fullWidth
+                          label="Alternative Host Campus / District B"
+                          value={compareDistrictB}
+                          onChange={(e) => setCompareDistrictB(e.target.value)}
+                        >
+                          {stations.map((s) => (
+                            <MenuItem key={s.district} value={s.district}>
+                              {s.district} ({s.state})
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Box>
+
+                      {comparisonData && (
+                        <Box sx={{ mt: 1 }}>
+                          <Alert severity="info" sx={{ mb: 2 }}>
+                            <strong>Recommendation:</strong> {comparisonData.recommendation}
+                          </Alert>
+                          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                            <Card sx={{ p: 2, border: comparisonData.preferred_district === comparisonData.district_a.district ? '2px solid #16a34a' : '1px solid #e2e8f0' }}>
+                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{comparisonData.district_a.district}</Typography>
+                                {comparisonData.preferred_district === comparisonData.district_a.district && (
+                                  <Chip label="Cleaner Option" color="success" size="small" sx={{ fontWeight: 700 }} />
+                                )}
+                              </Stack>
+                              <Typography variant="h4" sx={{ fontWeight: 900, color: comparisonData.district_a.badge_color, my: 1 }}>
+                                {comparisonData.district_a.predicted_api} API
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                MOE Tier: <strong>{comparisonData.district_a.tier_label}</strong>
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                Weather: {comparisonData.district_a.temperature}°C • {comparisonData.district_a.humidity}% RH
+                              </Typography>
+                            </Card>
+
+                            <Card sx={{ p: 2, border: comparisonData.preferred_district === comparisonData.district_b.district ? '2px solid #16a34a' : '1px solid #e2e8f0' }}>
+                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{comparisonData.district_b.district}</Typography>
+                                {comparisonData.preferred_district === comparisonData.district_b.district && (
+                                  <Chip label="Cleaner Option" color="success" size="small" sx={{ fontWeight: 700 }} />
+                                )}
+                              </Stack>
+                              <Typography variant="h4" sx={{ fontWeight: 900, color: comparisonData.district_b.badge_color, my: 1 }}>
+                                {comparisonData.district_b.predicted_api} API
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                MOE Tier: <strong>{comparisonData.district_b.tier_label}</strong>
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                Weather: {comparisonData.district_b.temperature}°C • {comparisonData.district_b.humidity}% RH
+                              </Typography>
+                            </Card>
+                          </Box>
+                        </Box>
+                      )}
+                    </Card>
 
                     {/* Scheduled Events Table */}
                     <Card sx={{ p: { xs: 2, sm: 3 } }}>
@@ -2209,85 +2084,6 @@ function App() {
           </Container>
         </Box>
       </Box>
-        {/* Official MOE Safety Directive Memorandum Dialog */}
-        <Dialog open={memorandumOpen} onClose={() => setMemorandumOpen(false)} maxWidth="md" fullWidth>
-          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Official School Safety Directive Memorandum
-            </Typography>
-            <Button size="small" variant="contained" startIcon={<PrintIcon />} onClick={() => window.print()}>
-              Print / Save PDF
-            </Button>
-          </DialogTitle>
-          <DialogContent dividers>
-            <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: '#ffffff', color: '#0f172a', borderRadius: 2, border: '1px solid #cbd5e1', fontFamily: "'Inter', sans-serif" }}>
-              <Box sx={{ borderBottom: '2px solid #0f172a', pb: 2, mb: 2.5, textAlign: 'center' }}>
-                <Typography variant="caption" sx={{ letterSpacing: '1px', fontWeight: 800, color: '#475569' }}>
-                  KEMENTERIAN PENDIDIKAN MALAYSIA (MOE) COMPLIANCE DIRECTIVE
-                </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 900, mt: 0.5 }}>
-                  SURAT PEKELILING IKHTISAS BIL. 1/2019: PANDUAN PENGURUSAN CUACA PANAS DAN JEREBU
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Official School Outdoor Activity Assessment & Precautionary Action Record
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5, mb: 2.5 }}>
-                <Typography variant="body2"><strong>School Campus:</strong> {customSchoolName || `${selectedDistrict} School`}</Typography>
-                <Typography variant="body2"><strong>DOE Station:</strong> {selectedDistrict} ({assessment?.station?.corridor})</Typography>
-                <Typography variant="body2"><strong>Scheduled Activity:</strong> {activityType}</Typography>
-                <Typography variant="body2"><strong>Planned Date & Window:</strong> {eventDate} • {startHour}:00 (Duration: {durationHours}h)</Typography>
-                <Typography variant="body2"><strong>Student Cohort:</strong> {assessment?.moe_safety?.cohort_label}</Typography>
-                <Typography variant="body2"><strong>Atmospheric Outlook:</strong> {assessment?.weather_outlook?.temperature}°C • {assessment?.weather_outlook?.humidity}% RH</Typography>
-              </Box>
-
-              <Box sx={{ p: 2, borderRadius: 2, bgcolor: `${assessment?.moe_safety?.badge_color}15`, border: `1.5px solid ${assessment?.moe_safety?.badge_color}`, mb: 2.5 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: assessment?.moe_safety?.badge_color }}>
-                    CLASSIFICATION: {assessment?.moe_safety?.tier_label} ({assessment?.prediction?.predicted_api} API)
-                  </Typography>
-                  <Chip label={`${assessment?.prediction?.confidence_pct}% AI Confidence`} size="small" />
-                </Stack>
-                <Typography variant="body2" sx={{ mt: 1, fontWeight: 600 }}>
-                  {assessment?.moe_safety?.headline}
-                </Typography>
-              </Box>
-
-              <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
-                Mandatory Pre-Event SOP Actions Verification:
-              </Typography>
-              <Box component="ul" sx={{ pl: 2.5, m: 0, mb: 3 }}>
-                {(MOE_SOP_CHECKLIST[assessment?.moe_safety?.risk_key] || MOE_SOP_CHECKLIST.safe).map((item) => (
-                  <li key={item.id} style={{ marginBottom: '6px' }}>
-                    <Typography variant="body2">
-                      [{checklistState[item.id] ? 'X' : '  '}] {item.text}
-                    </Typography>
-                  </li>
-                ))}
-              </Box>
-
-              <Box sx={{ borderTop: '1px solid #cbd5e1', pt: 3, mt: 3, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Assessed By (PE Teacher / Sports Officer):</Typography>
-                  <Box sx={{ borderBottom: '1px solid #94a3b8', height: 40, mt: 1 }} />
-                  <Typography variant="caption" sx={{ mt: 0.5, display: 'block' }}>Signature & Date: __________________________</Typography>
-                </Box>
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Approved By (Principal / PK Kokurikulum):</Typography>
-                  <Box sx={{ borderBottom: '1px solid #94a3b8', height: 40, mt: 1 }} />
-                  <Typography variant="caption" sx={{ mt: 0.5, display: 'block' }}>Signature & Date: __________________________</Typography>
-                </Box>
-              </Box>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setMemorandumOpen(false)}>Close</Button>
-            <Button variant="contained" startIcon={<PrintIcon />} onClick={() => window.print()}>
-              Print Directive (PDF)
-            </Button>
-          </DialogActions>
-        </Dialog>
     </ThemeProvider>
   );
 }
