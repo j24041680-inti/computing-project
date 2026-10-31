@@ -600,15 +600,19 @@ function App() {
   };
 
   const PageHeader = ({ title, subtitle, actions }) => (
-    <Stack
-      direction={{ xs: 'column', sm: 'row' }}
-      justifyContent="space-between"
-      alignItems={{ xs: 'flex-start', sm: 'center' }}
-      spacing={1.5}
-      sx={{ mb: 1, width: '100%', maxWidth: '100%' }}
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'flex-start', sm: 'center' },
+        gap: 1.5,
+        mb: 1.5,
+        width: '100%',
+      }}
     >
-      <Box sx={{ maxWidth: '100%' }}>
-        <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.45rem', md: '1.6rem' } }}>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.45rem', md: '1.6rem' }, fontWeight: 800 }}>
           {title}
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 0.3 }}>
@@ -619,16 +623,19 @@ function App() {
         <Box
           className="no-print"
           sx={{
-            width: { xs: '100%', sm: 'auto' },
             display: 'flex',
+            alignItems: 'center',
             gap: 1,
             flexWrap: 'wrap',
+            ml: { sm: 'auto' },
+            width: { xs: '100%', sm: 'auto' },
+            justifyContent: { xs: 'flex-start', sm: 'flex-end' },
           }}
         >
           {actions}
         </Box>
       )}
-    </Stack>
+    </Box>
   );
 
   return (
@@ -1365,19 +1372,23 @@ function App() {
                         }}
                       >
                         <Card sx={{ p: { xs: 2, sm: 3 } }}>
-                          <Stack
-                            direction="row"
-                            justifyContent="space-between"
-                            alignItems="center"
-                            sx={{ mb: 1 }}
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              mb: 1,
+                              width: '100%',
+                            }}
                           >
-                            <Typography variant="h6">Safety Dial Gauge</Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 800 }}>Safety Dial Gauge</Typography>
                             <Chip
                               size="small"
                               label={`${assessment.prediction?.confidence_pct}% Confidence`}
                               variant="outlined"
+                              sx={{ ml: 'auto' }}
                             />
-                          </Stack>
+                          </Box>
                           <SafetyGaugeD3
                             predictedApi={assessment.prediction?.predicted_api}
                             peakWindowApi={assessment.prediction?.peak_window_api}
@@ -1448,12 +1459,13 @@ function App() {
                       title="12-Month Seasonal Event Planner"
                       subtitle="Identify the safest months across Malaysia and schedule events for upcoming years."
                       actions={
-                        <Box
+                        <Stack
+                          direction="row"
+                          spacing={1}
                           sx={{
-                            display: 'grid',
-                            gridTemplateColumns: { xs: '1fr 1fr', sm: 'auto auto' },
-                            gap: 1,
+                            ml: { sm: 'auto' },
                             width: { xs: '100%', sm: 'auto' },
+                            justifyContent: { xs: 'flex-start', sm: 'flex-end' },
                           }}
                         >
                           <Button
@@ -1472,7 +1484,7 @@ function App() {
                           >
                             Add Event
                           </Button>
-                        </Box>
+                        </Stack>
                       }
                     />
 
@@ -1560,15 +1572,18 @@ function App() {
                         }}
                       >
                         <Card sx={{ p: { xs: 2, sm: 3 } }}>
-                          <Stack
-                            direction="row"
-                            justifyContent="space-between"
-                            alignItems="center"
-                            flexWrap="wrap"
-                            gap={1}
-                            sx={{ mb: 2 }}
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                              gap: 1.5,
+                              mb: 2,
+                              width: '100%',
+                            }}
                           >
-                            <Typography variant="h6">
+                            <Typography variant="h6" sx={{ fontWeight: 800 }}>
                               {plannerData.district} — {selectedYear} Seasonal Calendar
                             </Typography>
                             <Chip
@@ -1577,9 +1592,9 @@ function App() {
                               } ${selectedYear}`}
                               color="success"
                               size="small"
-                              sx={{ fontWeight: 700 }}
+                              sx={{ fontWeight: 700, ml: 'auto' }}
                             />
-                          </Stack>
+                          </Box>
 
                           {/* 12-Month Grid: 2 cols on mobile, 3 on tablet, 6 on desktop */}
                           <Box
@@ -1695,11 +1710,21 @@ function App() {
 
                     {/* Inter-School Campus Air Quality Comparison Tool */}
                     <Card sx={{ p: { xs: 2, sm: 2.5 } }}>
-                      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={1.5} sx={{ mb: 2 }}>
-                        <Box>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          flexDirection: { xs: 'column', sm: 'row' },
+                          justifyContent: 'space-between',
+                          alignItems: { xs: 'flex-start', sm: 'center' },
+                          gap: 1.5,
+                          mb: 2,
+                          width: '100%',
+                        }}
+                      >
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Stack direction="row" alignItems="center" spacing={1}>
                             <CompareIcon color="primary" />
-                            <Typography variant="h6">Inter-School Campus Air Comparison Tool</Typography>
+                            <Typography variant="h6" sx={{ fontWeight: 800 }}>Inter-School Campus Air Comparison Tool</Typography>
                           </Stack>
                           <Typography variant="caption" color="text.secondary">
                             Compare expected air quality between two hosting campuses or districts side-by-side for inter-school sports events.
@@ -1711,10 +1736,11 @@ function App() {
                           startIcon={<CompareIcon />}
                           onClick={handleCompareDistricts}
                           disabled={comparisonLoading}
+                          sx={{ ml: { sm: 'auto' } }}
                         >
                           {comparisonLoading ? 'Comparing...' : 'Run Campus Comparison'}
                         </Button>
-                      </Stack>
+                      </Box>
 
                       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 2 }}>
                         <TextField
@@ -1793,13 +1819,18 @@ function App() {
 
                     {/* Scheduled Events Table */}
                     <Card sx={{ p: { xs: 2, sm: 3 } }}>
-                      <Stack
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                        sx={{ mb: 2 }}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: 1.5,
+                          mb: 2,
+                          width: '100%',
+                        }}
                       >
-                        <Typography variant="h6">
+                        <Typography variant="h6" sx={{ fontWeight: 800 }}>
                           Scheduled Events ({scheduledEvents.length})
                         </Typography>
                         <Button
@@ -1807,10 +1838,11 @@ function App() {
                           variant="outlined"
                           startIcon={<DownloadIcon />}
                           onClick={() => exportScheduledEventsToCsv(scheduledEvents)}
+                          sx={{ ml: 'auto' }}
                         >
                           Export Schedule CSV
                         </Button>
-                      </Stack>
+                      </Box>
                       <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto' }}>
                         <Table size="small">
                           <TableHead>
