@@ -175,8 +175,8 @@ const DiurnalTrendD3 = ({
 
     const width = 760;
     const height = 380;
-    const marginFocus = { top: 24, right: 28, bottom: 90, left: 52 };
-    const marginContext = { top: 290, right: 28, bottom: 26, left: 52 };
+    const marginFocus = { top: 28, right: 28, bottom: 90, left: 56 };
+    const marginContext = { top: 290, right: 28, bottom: 26, left: 56 };
 
     const innerW = width - marginFocus.left - marginFocus.right;
     const focusH = height - marginFocus.top - marginFocus.bottom;
@@ -191,28 +191,52 @@ const DiurnalTrendD3 = ({
     const safeMax = thresholds?.safe_max || 50;
     const cautionMax = thresholds?.caution_max || 100;
     const indoorsMax = thresholds?.indoors_max || 200;
-    const yMax = Math.max(d3.max(parsedData, (d) => Math.max(d.actual_api, d.pred_api)) * 1.1, indoorsMax * 0.6, 140);
-    const yFocus = d3.scaleLinear().domain([0, yMax]).range([focusH, 0]);
-    const yContext = d3.scaleLinear().domain([0, yMax]).range([contextH, 0]);
+
+    const maxDataVal = d3.max(parsedData, (d) => Math.max(d.actual_api, d.pred_api)) || 100;
+    const yMax = Math.max(Math.ceil((maxDataVal * 1.15) / 50) * 50, indoorsMax * 1.1, 220);
+    const yFocus = d3.scaleLinear().domain([0, yMax]).range([focusH, 0]).nice();
+    const yContext = d3.scaleLinear().domain([0, yMax]).range([contextH, 0]).nice();
 
     const focus = svg.append('g').attr('transform', `translate(${marginFocus.left}, ${marginFocus.top})`);
     const context = svg.append('g').attr('transform', `translate(${marginContext.left}, ${marginContext.top})`);
 
-    // Bands
+    // Bands (strictly clamped to yMax so rectangles never exceed the chart canvas)
     if (showBands) {
-      [
-        { min: 0, max: safeMax, color: 'rgba(34, 197, 94, 0.08)' },
-        { min: safeMax, max: cautionMax, color: 'rgba(234, 179, 8, 0.08)' },
-        { min: cautionMax, max: indoorsMax, color: 'rgba(249, 115, 22, 0.08)' },
-        { min: indoorsMax, max: yMax, color: 'rgba(239, 68, 68, 0.08)' },
-      ].forEach((b) => {
-        focus.append('rect').attr('x', 0).attr('width', innerW)
-          .attr('y', yFocus(b.max)).attr('height', Math.max(0, yFocus(b.min) - yFocus(b.max))).attr('fill', b.color);
+      const bands = [];
+      if (safeMax > 0 && yMax > 0) {
+        bands.push({ min: 0, max: Math.min(safeMax, yMax), color: 'rgba(34, 197, 94, 0.08)' });
+      }
+      if (cautionMax > safeMax && yMax > safeMax) {
+        bands.push({ min: safeMax, max: Math.min(cautionMax, yMax), color: 'rgba(234, 179, 8, 0.08)' });
+      }
+      if (indoorsMax > cautionMax && yMax > cautionMax) {
+        bands.push({ min: cautionMax, max: Math.min(indoorsMax, yMax), color: 'rgba(249, 115, 22, 0.08)' });
+      }
+      if (yMax > indoorsMax) {
+        bands.push({ min: indoorsMax, max: yMax, color: 'rgba(239, 68, 68, 0.08)' });
+      }
+
+      bands.forEach((b) => {
+        focus.append('rect')
+          .attr('x', 0)
+          .attr('width', innerW)
+          .attr('y', yFocus(b.max))
+          .attr('height', Math.max(0, yFocus(b.min) - yFocus(b.max)))
+          .attr('fill', b.color);
       });
+
       [safeMax, cautionMax, indoorsMax].forEach((v) => {
-        if (v <= yMax) focus.append('line').attr('x1', 0).attr('x2', innerW).attr('y1', yFocus(v)).attr('y2', yFocus(v))
-          .attr('stroke', v === safeMax ? '#16a34a' : v === cautionMax ? '#ca8a04' : '#f97316')
-          .attr('stroke-width', 1).attr('stroke-dasharray', '4,4').attr('opacity', 0.55);
+        if (v < yMax) {
+          focus.append('line')
+            .attr('x1', 0)
+            .attr('x2', innerW)
+            .attr('y1', yFocus(v))
+            .attr('y2', yFocus(v))
+            .attr('stroke', v === safeMax ? '#16a34a' : v === cautionMax ? '#ca8a04' : '#f97316')
+            .attr('stroke-width', 1)
+            .attr('stroke-dasharray', '4,4')
+            .attr('opacity', 0.55);
+        }
       });
     }
 
