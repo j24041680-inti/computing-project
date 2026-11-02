@@ -238,10 +238,10 @@ npm start
    - Semicircle safety gauge with dynamic MOE threshold sectors.
    - 24-hour diurnal risk curve highlighting the safest clean-air window.
    - TreeSHAP feature attributions showing exact drivers of air quality.
-   - Live What-If Stress Tester with MAAQS boundary validation.
+   - Optional **Run Model Prediction** button reruns XGBoost with stored historical features for the selected event hours and displays a separate result. Main readings, charts, exports, and saved events continue to use the precomputed dataset. Small differences can arise from rounded stored features.
 
 2. **Event Planner View (`/planner`):**
-   - Multi-year planning calendar (2026, 2027, 2028, 2029).
+   - Multi-year planning calendar (2026, 2027, 2028, 2029). Each year reuses historical seasonal estimates; these are not year-specific forecasts.
    - District-level monthly risk bar chart and Monsoon hazard warnings.
    - Full RESTful Event Schedule Manager with Create, Edit, Reschedule, and Delete actions.
    - One-click CSV and print-ready PDF export.
@@ -262,6 +262,7 @@ The backend provides full Swagger UI documentation at `http://localhost:8000/doc
 | **GET** | `/api/v1/health` | Service status, loaded model type, and precomputed record counts |
 | **GET** | `/api/v1/stations` | List of 26 monitoring stations and 4 regional corridors |
 | **GET** | `/api/v1/forecast-lookup` | Retrieves precomputed hourly forecasts, MOE directive, and SHAP data |
+| **POST** | `/api/v1/model-prediction` | Reruns the model using stored seasonal features; returns a separate prediction |
 | **POST** | `/api/v1/assess-event` | Evaluates event safety with optional live What-If weather overrides |
 | **GET** | `/api/v1/seasonal-planner` | Returns 12-month risk profiles and safest months for a given year |
 | **GET** | `/api/v1/analytics` | Provides time-series and correlation matrix data for D3.js charts |
@@ -283,3 +284,13 @@ SchoolAir operationalizes the **Ministry of Education Malaysia Circular No. 1/20
 | **101 – 200** | Unhealthy | Mandatory cessation of outdoor sports & assemblies; relocate activities indoors. | `MOVE INDOORS` |
 | **201 – 300** | Very Unhealthy | Complete suspension of outdoor activities; prepare campus closure protocols. | `TOTAL SUSPENSION` |
 | **> 300** | Hazardous | Immediate school closure and transition to Home-Based Learning (PdPR). | `EMERGENCY CLOSURE` |
+
+## Backend regression checks
+
+Run from the repository root:
+
+```bash
+backend/.venv/bin/python -m unittest discover -s backend/tests -v
+```
+
+The checks cover invalid dates and query inputs, selected-month comparisons, live model inference, and unavailable-model responses. They do not write scheduled events.

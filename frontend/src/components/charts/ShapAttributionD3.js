@@ -1,3 +1,5 @@
+import useReducedMotion from '../../hooks/useReducedMotion';
+import { formatApi } from '../../utils/formatApi';
 /**
  * ShapAttributionD3.js
  * ============================================================================
@@ -12,6 +14,7 @@ import * as d3 from 'd3';
 import { Box, Typography, ToggleButton, ToggleButtonGroup, Chip } from '@mui/material';
 
 const ShapAttributionD3 = ({ attributions = [] }) => {
+  const reducedMotion = useReducedMotion();
   const svgRef = useRef(null);
   const [viewMode, setViewMode] = useState('percentage');
   const [hoveredItem, setHoveredItem] = useState(null);
@@ -20,6 +23,7 @@ const ShapAttributionD3 = ({ attributions = [] }) => {
     const svgEl = svgRef.current;
     if (!svgEl || !attributions || attributions.length === 0) return;
 
+    const animateBars = !reducedMotion;
     const data = attributions.slice(0, 6);
     const width = 520;
     const rowHeight = 36;
@@ -79,9 +83,9 @@ const ShapAttributionD3 = ({ attributions = [] }) => {
           d3.select(this).attr('opacity', 1);
           setHoveredItem(null);
         })
-        .attr('width', 0)
+        .attr('width', (d) => animateBars ? 0 : Math.max(4, xScale(d.percentage)))
         .transition()
-        .duration(600)
+        .duration(animateBars ? 450 : 0)
         .attr('width', (d) => Math.max(4, xScale(d.percentage)));
 
       g.selectAll('.val')
@@ -124,10 +128,10 @@ const ShapAttributionD3 = ({ attributions = [] }) => {
           d3.select(this).attr('opacity', 1);
           setHoveredItem(null);
         })
-        .attr('x', zeroX)
-        .attr('width', 0)
+        .attr('x', (d) => animateBars || d.shap_value >= 0 ? zeroX : xScale(d.shap_value))
+        .attr('width', (d) => animateBars ? 0 : Math.max(3, Math.abs(xScale(d.shap_value) - zeroX)))
         .transition()
-        .duration(600)
+        .duration(animateBars ? 450 : 0)
         .attr('x', (d) => (d.shap_value >= 0 ? zeroX : xScale(d.shap_value)))
         .attr('width', (d) => Math.max(3, Math.abs(xScale(d.shap_value) - zeroX)));
 
@@ -155,7 +159,7 @@ const ShapAttributionD3 = ({ attributions = [] }) => {
       svg.on('.brush', null);
       svg.on('.zoom', null);
     };
-  }, [attributions, viewMode]);
+  }, [attributions, viewMode, reducedMotion]);
 
   return (
     <Box>
@@ -186,7 +190,7 @@ const ShapAttributionD3 = ({ attributions = [] }) => {
         {hoveredItem ? (
           <Chip
             size="small"
-            label={`${hoveredItem.feature}: ${hoveredItem.percentage}% (${hoveredItem.shap_value >= 0 ? '+' : ''}${hoveredItem.shap_value.toFixed(2)} API)`}
+            label={`${hoveredItem.feature}: ${hoveredItem.percentage}% (${hoveredItem.shap_value >= 0 ? '+' : ''}${formatApi(hoveredItem.shap_value)} API)`}
             sx={{ fontWeight: 600, bgcolor: '#eff6ff', color: '#1d4ed8' }}
           />
         ) : (

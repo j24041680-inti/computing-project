@@ -1,3 +1,5 @@
+import { formatDate } from './dateFormat';
+import { formatApi } from './formatApi';
 /**
  * exportUtils.js
  * ============================================================================
@@ -49,27 +51,27 @@ export function exportAssessmentToCsv(assessment) {
     School_Name: school_info?.school_name || station?.district,
     Matched_DOE_Station: station?.district,
     Corridor: station?.corridor,
-    Event_Date: event_context?.event_date,
+    Event_Date: formatDate(event_context?.event_date),
     Month: event_context?.month_name,
     Activity_Type: event_context?.activity_type,
     Student_Cohort: moe_safety?.cohort_label,
     Hour_24H: hr.time_label,
     Is_Selected_Event_Window: hr.is_selected_window ? 'YES' : 'NO',
-    Predicted_API_Selected_Regime: hr.predicted_api,
-    Predicted_API_Typical: hr.typical_api,
-    Predicted_API_Peak_Haze: hr.peak_haze_api,
+    Predicted_API_Selected_Regime: formatApi(hr.predicted_api),
+    Predicted_API_Typical: formatApi(hr.typical_api),
+    Predicted_API_Peak_Haze: formatApi(hr.peak_haze_api),
     MOE_Safety_Directive: hr.tier_label,
     Temperature_C: hr.temperature,
     Humidity_Pct: hr.humidity,
     Wind_Speed_ms: hr.wind_speed,
-    Overall_Event_API: prediction?.predicted_api,
+    Overall_Event_API: formatApi(prediction?.predicted_api),
     Model_Confidence_Pct: prediction?.confidence_pct,
     Dominant_SHAP_Driver: prediction?.dominant_driver,
     Inference_Source: weather_outlook?.inference_source,
   }));
 
   const safeDistrict = (station?.district || 'Station').replace(/\s+/g, '_');
-  const safeDate = event_context?.event_date || 'Forecast';
+  const safeDate = event_context?.event_date ? formatDate(event_context.event_date).replaceAll('/', '-') : 'Forecast';
   downloadCsvFile(`SchoolAir_Safety_Report_${safeDistrict}_${safeDate}.csv`, rows);
 }
 
@@ -87,9 +89,9 @@ export function exportSeasonalPlannerToCsv(plannerData) {
     Month_Number: m.month,
     Month_Name: m.month_name,
     MOE_Recommended_Tier: m.tier_label,
-    Seasonal_Planning_Risk_Index: m.planning_risk_index,
-    Typical_Predicted_API: m.pred_mean_api,
-    Peak_Haze_Surge_API: m.pred_peak_haze_api,
+    Seasonal_Planning_Risk_Index: formatApi(m.planning_risk_index),
+    Typical_Predicted_API: formatApi(m.pred_mean_api),
+    Peak_Haze_Surge_API: formatApi(m.pred_peak_haze_api),
     Safest_Morning_Hour: m.safest_hour_label,
     Peak_Risk_Hour: m.peak_risk_hour_label,
     Mean_Temperature_C: m.mean_temp,
@@ -116,14 +118,14 @@ export function exportScheduledEventsToCsv(events) {
     School_Name: ev.school_name,
     DOE_Station_District: ev.district,
     Corridor: ev.corridor,
-    Event_Date: ev.event_date,
+    Event_Date: formatDate(ev.event_date),
     Start_Hour: `${String(ev.start_hour).padStart(2, '0')}:00`,
     Duration_Hours: ev.duration_hours,
     Activity_Type: ev.activity_type,
     Student_Cohort: ev.cohort,
     Participants_Count: ev.participants_count,
     Weather_Regime: ev.weather_regime,
-    AI_Predicted_API: ev.predicted_api,
+    AI_Predicted_API: formatApi(ev.predicted_api),
     MOE_Safety_Directive: ev.tier_label,
     Recommended_Safest_Hour: `${String(ev.safest_hour || 8).padStart(2, '0')}:00`,
     Temperature_C: ev.temperature,

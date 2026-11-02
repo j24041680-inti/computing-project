@@ -104,3 +104,120 @@ svg .brush .selection:active {
     background: white !important;
   }
 }
+
+/* Short entrances keep attention on newly available results. */
+.result-card,
+.prediction-result {
+  animation: resultArrival 320ms ease-out backwards;
+}
+.result-card:nth-child(2) { animation-delay: 45ms; }
+.result-card:nth-child(3) { animation-delay: 90ms; }
+.result-card:nth-child(4) { animation-delay: 135ms; }
+@keyframes resultArrival {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.event-row {
+  transition: background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  animation: resultArrival 250ms ease-out;
+}
+@media (hover: hover) and (pointer: fine) {
+  .event-row:hover {
+    transform: translateY(-1px);
+    box-shadow: inset 3px 0 #2563eb, 0 3px 8px rgba(15, 23, 42, 0.06);
+  }
+}
+.connection-pending::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: connectionPulse 1200ms ease-in-out infinite;
+}
+@keyframes connectionPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+/* Keep every result immediate and readable when motion is disabled. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .MuiCard-root:hover, .MuiButton-root:active { transform: none !important; }
+}
+@media print {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Fade the deleted row in place; column widths stay fixed throughout. */
+.event-row.event-row-exit {
+  pointer-events: none;
+  animation: eventDeparture 180ms ease-out forwards;
+}
+@keyframes eventDeparture {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-row.event-row-exit { animation: none !important; }
+}
+
+.safety-print-report { display: none; }
+@page { size: A4 portrait; margin: 14mm 12mm; }
+@media print {
+  html, body, #root {
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: white !important;
+  }
+  .safety-checker-screen, .MuiSnackbar-root, .MuiDialog-root { display: none !important; }
+  .safety-print-report {
+    display: block;
+    color: #172033;
+    background: white;
+    font: 10pt/1.45 Arial, sans-serif;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .report-page { break-after: page; }
+  .report-page:last-child { break-after: auto; }
+  .report-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 18px; }
+  .report-header span { font-size: 9pt; color: #475569; }
+  .report-brand { letter-spacing: 2px; color: #2563eb; font-size: 9pt; font-weight: 700; margin: 0 0 4px; }
+  .report-page h1 { font-size: 21pt; line-height: 1.2; margin: 0; }
+  .report-page h2 { font-size: 15pt; margin: 0 0 12px; overflow-wrap: anywhere; }
+  .report-page h3 { font-size: 11pt; margin: 18px 0 8px; break-after: avoid; }
+  .report-page p { margin: 6px 0 10px; }
+  .report-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; margin: 0 0 16px; }
+  .report-details div { min-width: 0; }
+  .report-details dt { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; }
+  .report-details dd { margin: 3px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+  .report-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; break-inside: avoid; }
+  .report-metrics > div { border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; }
+  .report-metrics span, .report-metrics small { display: block; font-size: 8pt; color: #475569; }
+  .report-metrics strong { display: block; font-size: 23pt; line-height: 1.3; margin: 4px 0; color: #172033; }
+  .report-recommendation { font-weight: 700; }
+  .report-page ul { margin: 8px 0; padding-left: 18px; }
+  .report-page li { margin: 4px 0; }
+  .report-page svg { width: 100%; height: auto; overflow: visible; break-inside: avoid; }
+  .report-page svg text { font: 11px Arial, sans-serif; fill: #334155; }
+  .report-note, .report-footer { font-size: 8pt; color: #475569; }
+  .report-footer { border-top: 1px solid #cbd5e1; margin-top: 18px; padding-top: 8px; }
+  .report-model { border-left: 3px solid #2563eb; padding: 0 12px; margin-top: 18px; break-inside: avoid; }
+}
+
+/* Animate changing readings without hiding or remounting their cards. */
+@keyframes readingUpdate {
+  from { opacity: 0.75; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reading-update { animation: readingUpdate 240ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .reading-update { animation: none !important; }
+}

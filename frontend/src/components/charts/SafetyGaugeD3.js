@@ -1,3 +1,4 @@
+import useReducedMotion from '../../hooks/useReducedMotion';
 /**
  * SafetyGaugeD3.js
  * ============================================================================
@@ -17,7 +18,9 @@ const SafetyGaugeD3 = ({
   badgeColor = '#16a34a',
   thresholds = { safe_max: 50, caution_max: 100, indoors_max: 200 },
 }) => {
+  const reducedMotion = useReducedMotion();
   const svgRef = useRef(null);
+  const needleAngle = useRef(-90);
   const [hoveredZone, setHoveredZone] = useState(null);
 
   useEffect(() => {
@@ -75,11 +78,11 @@ const SafetyGaugeD3 = ({
       .attr('opacity', 0.85)
       .style('cursor', 'pointer')
       .on('mouseenter', function (event, d) {
-        d3.select(this).transition().duration(150).attr('opacity', 1).attr('transform', 'scale(1.03)');
+        d3.select(this).transition().duration(reducedMotion ? 0 : 150).attr('opacity', 1).attr('transform', 'scale(1.03)');
         setHoveredZone(d);
       })
       .on('mouseleave', function () {
-        d3.select(this).transition().duration(150).attr('opacity', 0.85).attr('transform', 'scale(1)');
+        d3.select(this).transition().duration(reducedMotion ? 0 : 150).attr('opacity', 0.85).attr('transform', 'scale(1)');
         setHoveredZone(null);
       });
 
@@ -102,11 +105,17 @@ const SafetyGaugeD3 = ({
     g.append('path')
       .attr('d', `M -3.5 0 L 0 -${needleLen} L 3.5 0 Z`)
       .attr('fill', '#0f172a')
-      .attr('transform', 'rotate(-90)')
+      .attr('transform', `rotate(${reducedMotion ? targetDeg : needleAngle.current})`)
       .transition()
-      .duration(700)
+      .duration(reducedMotion ? 0 : 700)
       .ease(d3.easeCubicOut)
-      .attr('transform', `rotate(${targetDeg})`);
+      .attrTween('transform', () => {
+        const interpolate = d3.interpolateNumber(needleAngle.current, targetDeg);
+        return (t) => {
+          needleAngle.current = interpolate(t);
+          return `rotate(${needleAngle.current})`;
+        };
+      });
 
     g.append('circle')
       .attr('cx', 0)
@@ -142,7 +151,7 @@ const SafetyGaugeD3 = ({
       svg.on('.brush', null);
       svg.on('.zoom', null);
     };
-  }, [predictedApi, peakWindowApi, badgeColor, thresholds]);
+  }, [predictedApi, peakWindowApi, badgeColor, thresholds, reducedMotion]);
 
   return (
     <Box sx={{ textAlign: 'center', py: 0.5 }}>

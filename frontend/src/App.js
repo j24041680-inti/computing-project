@@ -1,3 +1,7 @@
+import DateField from './components/DateField';
+import { formatDate } from './utils/dateFormat';
+import SafetyPrintReport from './components/SafetyPrintReport';
+import useReducedMotion from './hooks/useReducedMotion';
 /**
  * App.js — SchoolAir Full-Stack Application
  * ============================================================================
@@ -9,6 +13,7 @@
  * Unit: COS30049 Group 7 (Poh Wei Le, Ng Boon Ping, Kennard Chan Kai Lik, Tee Ming Jun)
  */
 
+import { formatApi } from './utils/formatApi';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -51,7 +56,7 @@ import {
   DialogActions,
   Snackbar,
   Alert,
-  LinearProgress,
+  CircularProgress,
   Tooltip,
   Avatar,
   Paper,
@@ -136,11 +141,13 @@ const MALAYSIA_STATES = [
 ];
 
 function AnimatedNumber({ value, duration = 1000, suffix = '' }) {
+  const reducedMotion = useReducedMotion();
   const [display, setDisplay] = useState(0);
   const startRef = useRef(null);
 
   useEffect(() => {
-    if (typeof value !== 'number') {
+    startRef.current = null;
+    if (reducedMotion || typeof value !== 'number') {
       setDisplay(value);
       return;
     }
@@ -155,7 +162,7 @@ function AnimatedNumber({ value, duration = 1000, suffix = '' }) {
     };
     rafId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(rafId);
-  }, [value, duration]);
+  }, [value, duration, reducedMotion]);
 
   if (typeof value !== 'number') return <>{value}</>;
   return (
@@ -169,12 +176,13 @@ function AnimatedNumber({ value, duration = 1000, suffix = '' }) {
 function KpiCard({ icon, label, value, sub, color = '#2563eb', numeric = false, suffix = '' }) {
   return (
     <Card
+      className="result-card"
       sx={{
         p: { xs: 2, sm: 2.5 },
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
         borderRadius: 3.5,
         width: '100%',
         maxWidth: '100%',
@@ -198,15 +206,15 @@ function KpiCard({ icon, label, value, sub, color = '#2563eb', numeric = false, 
           {label}
         </Typography>
       </Stack>
-      <Box sx={{ mt: 'auto' }}>
-        <Typography variant="h5" sx={{ fontWeight: 900, lineHeight: 1.2 }}>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography key={String(value)} className="reading-update" variant="h5" title={String(value ?? '')} sx={{ fontWeight: 900, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {numeric ? <AnimatedNumber value={value} suffix={suffix} /> : value}
         </Typography>
         {sub && (
           <Typography
             variant="caption"
             color="text.secondary"
-            sx={{ mt: 0.5, display: 'block', minHeight: 16 }}
+            sx={{ mt: 0.5, display: 'block', lineHeight: 1.4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
           >
             {sub}
           </Typography>
@@ -216,7 +224,47 @@ function KpiCard({ icon, label, value, sub, color = '#2563eb', numeric = false, 
   );
 }
 
+const PageHeader = ({ title, subtitle, actions }) => (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: { xs: 'column', sm: 'row' },
+        justifyContent: 'space-between',
+        alignItems: { xs: 'flex-start', sm: 'center' },
+        gap: 1.5,
+        mb: 1.5,
+        width: '100%',
+      }}
+    >
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.45rem', md: '1.6rem' }, fontWeight: 800 }}>
+          {title}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.3 }}>
+          {subtitle}
+        </Typography>
+      </Box>
+      {actions && (
+        <Box
+          className="no-print"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            flexWrap: 'wrap',
+            ml: { sm: 'auto' },
+            width: { xs: '100%', sm: 'auto' },
+            justifyContent: { xs: 'flex-start', sm: 'flex-end' },
+          }}
+        >
+          {actions}
+        </Box>
+      )}
+    </Box>
+  );
+
 function App() {
+  const reducedMotion = useReducedMotion();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -225,6 +273,9 @@ function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [backendOnline, setBackendOnline] = useState(true);
+  const [connecting, setConnecting] = useState(true);
+  const [deletingEvents, setDeletingEvents] = useState([]);
+  const [removingEvents, setRemovingEvents] = useState([]);
   const [snackbar, setSnackbar] = useState({ open: false, severity: 'success', message: '' });
 
   const showNotice = (message, severity = 'success') =>
@@ -247,6 +298,7 @@ function App() {
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedMonth, setSelectedMonth] = useState(4);
   const [eventDate, setEventDate] = useState('2026-04-15');
+  const [dateInputValid, setDateInputValid] = useState(true);
   const [startHour, setStartHour] = useState(8);
   const [durationHours] = useState(2);
 
@@ -268,7 +320,22 @@ function App() {
 
   // Payloads
   const [assessment, setAssessment] = useState(null);
+  const [assessmentError, setAssessmentError] = useState('');
+  const [loadedAssessmentKey, setLoadedAssessmentKey] = useState('');
+  const assessmentSelectionKey = JSON.stringify([selectedDistrict, customSchoolName, eventDate, selectedMonth, startHour, durationHours, activityType, cohort, weatherRegime]);
+  const assessmentPending = !dateInputValid || loading || loadedAssessmentKey !== assessmentSelectionKey || Boolean(assessmentError);
+  const handleChartHourSelect = useCallback((hour) => setStartHour(hour), []);
+  const [modelResult, setModelResult] = useState(null);
+  const [modelLoading, setModelLoading] = useState(false);
+  const [modelError, setModelError] = useState('');
+  const modelRequest = useRef(0);
+  const assessmentRequest = useRef(0);
   const [plannerData, setPlannerData] = useState(null);
+  const [plannerLoading, setPlannerLoading] = useState(false);
+  const [plannerError, setPlannerError] = useState('');
+  const plannerPending = plannerLoading || Boolean(plannerData && (
+    plannerData.district !== selectedDistrict || plannerData.year !== selectedYear
+  ));
   const [analyticsData, setAnalyticsData] = useState(null);
 
   // Dialog Inputs
@@ -312,6 +379,8 @@ function App() {
       },
       shape: { borderRadius: 14 },
       components: {
+        // Dropdowns must not change body scrollbars and reflow the dashboard.
+        MuiSelect: { defaultProps: { MenuProps: { disableScrollLock: true, transitionDuration: 0 } } },
         MuiContainer: {
           styleOverrides: {
             root: {
@@ -391,6 +460,8 @@ function App() {
       setBackendOnline(true);
     } catch {
       setBackendOnline(false);
+    } finally {
+      setConnecting(false);
     }
   }, []);
 
@@ -399,7 +470,14 @@ function App() {
   }, [fetchInitialData]);
 
   const fetchEventAssessment = useCallback(async () => {
+    const requestId = ++assessmentRequest.current;
     setLoading(true);
+    setAssessmentError('');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(eventDate)) {
+      setAssessmentError('Enter a valid event date.');
+      setLoading(false);
+      return;
+    }
     try {
       const params = {
         district: selectedDistrict,
@@ -413,20 +491,57 @@ function App() {
         weather_regime: weatherRegime,
       };
       const res = await axios.get(`${API_BASE}/forecast-lookup`, { params });
+      if (requestId !== assessmentRequest.current) return;
       setAssessment(res.data);
+      setLoadedAssessmentKey(assessmentSelectionKey);
       setBackendOnline(true);
-    } catch {
-      setBackendOnline(false);
+    } catch (err) {
+      if (requestId !== assessmentRequest.current) return;
+      setBackendOnline(Boolean(err.response));
+      setAssessmentError(err.response?.data?.details?.join(' ') || err.response?.data?.message || 'Unable to retrieve an assessment. Check the backend connection.');
     } finally {
-      setLoading(false);
+      if (requestId === assessmentRequest.current) setLoading(false);
     }
-  }, [selectedDistrict, customSchoolName, eventDate, selectedMonth, startHour, durationHours, activityType, cohort, weatherRegime]);
+  }, [assessmentSelectionKey, selectedDistrict, customSchoolName, eventDate, selectedMonth, startHour, durationHours, activityType, cohort, weatherRegime]);
 
   useEffect(() => {
-    fetchEventAssessment();
-  }, [fetchEventAssessment]);
+    // Month selection in the planner only selects a calendar cell. Fetch the
+    // detailed assessment when its results are actually visible.
+    if (location.pathname === '/checker' || location.pathname === '/') fetchEventAssessment();
+  }, [fetchEventAssessment, location.pathname]);
 
-  const fetchSeasonalPlanner = useCallback(async () => {
+  // A separate model result never replaces the dataset-backed assessment.
+  useEffect(() => {
+    modelRequest.current += 1;
+    setModelResult(null);
+    setModelError('');
+    setModelLoading(false);
+  }, [selectedDistrict, customSchoolName, eventDate, selectedMonth, startHour, durationHours, activityType, cohort, weatherRegime]);
+
+  const handleRunModel = async () => {
+    const requestId = ++modelRequest.current;
+    setModelLoading(true);
+    setModelResult(null);
+    setModelError('');
+    try {
+      const res = await axios.post(`${API_BASE}/model-prediction`, {
+        district: selectedDistrict, custom_school_name: customSchoolName,
+        event_date: eventDate, month: selectedMonth, start_hour: startHour,
+        duration_hours: durationHours, activity_type: activityType, cohort,
+        weather_regime: 'typical',
+      });
+      if (requestId === modelRequest.current) setModelResult(res.data);
+    } catch (err) {
+      if (requestId === modelRequest.current) setModelError(err.response?.data?.message || 'Unable to run the model. Dataset readings are still available.');
+    } finally {
+      if (requestId === modelRequest.current) setModelLoading(false);
+    }
+  };
+
+  const fetchSeasonalPlanner = useCallback(async (signal) => {
+    // Keep the mounted calendar in place while replacing its data.
+    setPlannerLoading(true);
+    setPlannerError('');
     try {
       const params = {
         district: selectedDistrict,
@@ -434,25 +549,36 @@ function App() {
         weather_regime: weatherRegime,
         year: selectedYear,
       };
-      const res = await axios.get(`${API_BASE}/seasonal-planner`, { params });
-      setPlannerData(res.data);
-    } catch {}
+      const res = await axios.get(`${API_BASE}/seasonal-planner`, { params, signal });
+      if (!signal.aborted) setPlannerData(res.data);
+    } catch (err) {
+      if (!axios.isCancel(err)) setPlannerError('Unable to load seasonal estimates. Select another district or refresh to retry.');
+    } finally {
+      if (!signal.aborted) setPlannerLoading(false);
+    }
   }, [selectedDistrict, cohort, weatherRegime, selectedYear]);
 
   useEffect(() => {
-    fetchSeasonalPlanner();
+    const controller = new AbortController();
+    fetchSeasonalPlanner(controller.signal);
+    return () => controller.abort();
   }, [fetchSeasonalPlanner]);
 
-  const fetchAnalyticsData = useCallback(async () => {
+  const fetchAnalyticsData = useCallback(async (signal) => {
+    setAnalyticsData(null);
     try {
       const params = { district: analyticsDistrict, corridor: analyticsCorridor };
-      const res = await axios.get(`${API_BASE}/analytics`, { params });
+      const res = await axios.get(`${API_BASE}/analytics`, { params, signal });
       setAnalyticsData(res.data);
-    } catch {}
+    } catch (err) {
+      if (!axios.isCancel(err)) setSnackbar({ open: true, severity: 'error', message: 'Unable to load analytics.' });
+    }
   }, [analyticsDistrict, analyticsCorridor]);
 
   useEffect(() => {
-    if (location.pathname === '/analytics') fetchAnalyticsData();
+    const controller = new AbortController();
+    if (location.pathname === '/analytics') fetchAnalyticsData(controller.signal);
+    return () => controller.abort();
   }, [location.pathname, fetchAnalyticsData]);
 
   const handleYearChange = (newYear) => {
@@ -534,6 +660,10 @@ function App() {
   };
 
   const handleCreateEvent = async () => {
+    if (!dateInputValid) {
+      showNotice('Enter a valid date as DD/MM/YYYY.', 'error');
+      return;
+    }
     const trimmedTitle = (newEventTitle || '').trim();
     if (trimmedTitle.length < 3) {
       showNotice('Event title must be at least 3 characters.', 'error');
@@ -570,7 +700,7 @@ function App() {
     const payload =
       mode === 'month'
         ? {
-            event_date: `${selectedYear}-04-15`,
+            event_date: `${selectedYear}-${String(plannerData?.optimal_month?.month || selectedMonth).padStart(2, '0')}-15`,
             start_hour: ev.safest_hour || 8,
             weather_regime: 'typical',
           }
@@ -586,12 +716,30 @@ function App() {
     }
   };
 
+  const finishEventRemoval = (eventId) => {
+    setScheduledEvents((prev) => prev.filter((item) => item.event_id !== eventId));
+    setDeletingEvents((prev) => prev.filter((id) => id !== eventId));
+    setRemovingEvents((prev) => prev.filter((id) => id !== eventId));
+  };
+
+  // Changing the motion preference mid-fade must not leave invisible rows behind.
+  useEffect(() => {
+    if (!reducedMotion || removingEvents.length === 0) return;
+    setScheduledEvents((prev) => prev.filter((item) => !removingEvents.includes(item.event_id)));
+    setDeletingEvents((prev) => prev.filter((id) => !removingEvents.includes(id)));
+    setRemovingEvents([]);
+  }, [reducedMotion, removingEvents]);
+
   const handleDeleteEvent = async (eventId) => {
+    if (deletingEvents.includes(eventId)) return;
+    setDeletingEvents((prev) => [...prev, eventId]);
     try {
       const res = await axios.delete(`${API_BASE}/events/${eventId}`);
-      setScheduledEvents((prev) => prev.filter((item) => item.event_id !== eventId));
+      if (reducedMotion) finishEventRemoval(eventId);
+      else setRemovingEvents((prev) => [...prev, eventId]);
       showNotice(res.data.message || `Event ${eventId} removed.`);
     } catch {
+      setDeletingEvents((prev) => prev.filter((id) => id !== eventId));
       showNotice('Delete failed.', 'error');
     }
   };
@@ -616,49 +764,12 @@ function App() {
     return <InfoIcon fontSize="small" />;
   };
 
-  const PageHeader = ({ title, subtitle, actions }) => (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        justifyContent: 'space-between',
-        alignItems: { xs: 'flex-start', sm: 'center' },
-        gap: 1.5,
-        mb: 1.5,
-        width: '100%',
-      }}
-    >
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography variant="h5" sx={{ fontSize: { xs: '1.25rem', sm: '1.45rem', md: '1.6rem' }, fontWeight: 800 }}>
-          {title}
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.3 }}>
-          {subtitle}
-        </Typography>
-      </Box>
-      {actions && (
-        <Box
-          className="no-print"
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            flexWrap: 'wrap',
-            ml: { sm: 'auto' },
-            width: { xs: '100%', sm: 'auto' },
-            justifyContent: { xs: 'flex-start', sm: 'flex-end' },
-          }}
-        >
-          {actions}
-        </Box>
-      )}
-    </Box>
-  );
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box
+        className={location.pathname === '/checker' ? 'app-screen safety-checker-screen' : 'app-screen'}
         sx={{
           display: 'flex',
           flexDirection: 'column',
@@ -763,7 +874,9 @@ function App() {
               <Stack direction="row" alignItems="center" spacing={1.5} sx={{ ml: 2 }}>
                 <Chip
                   size="small"
-                  label={backendOnline ? 'Online' : 'Offline'}
+                  className={connecting ? 'connection-pending' : ''}
+                  role="status"
+                  label={connecting ? 'Connecting…' : backendOnline ? 'Online' : 'Offline'}
                   variant="outlined"
                   sx={{
                     fontWeight: 700,
@@ -783,7 +896,6 @@ function App() {
               </Stack>
             </Toolbar>
           </Container>
-          {loading && <LinearProgress sx={{ height: 2 }} />}
         </AppBar>
 
         {/* Mobile Navigation Drawer */}
@@ -1196,7 +1308,10 @@ function App() {
                             size="small"
                             variant="outlined"
                             startIcon={<DownloadIcon />}
-                            onClick={() => exportAssessmentToCsv(assessment)}
+                            disabled={!assessment}
+                            aria-disabled={assessmentPending || !assessment}
+                            sx={{ cursor: assessmentPending ? 'progress' : 'pointer' }}
+                            onClick={() => { if (!assessmentPending) exportAssessmentToCsv(assessment); }}
                           >
                             CSV
                           </Button>
@@ -1204,7 +1319,10 @@ function App() {
                             size="small"
                             variant="outlined"
                             startIcon={<PrintIcon />}
-                            onClick={() => window.print()}
+                            disabled={!assessment}
+                            aria-disabled={assessmentPending || !assessment}
+                            sx={{ cursor: assessmentPending ? 'progress' : 'pointer' }}
+                            onClick={() => { if (!assessmentPending) window.print(); }}
                           >
                             Print
                           </Button>
@@ -1212,7 +1330,11 @@ function App() {
                             size="small"
                             variant="contained"
                             startIcon={<AddIcon />}
+                            disabled={!assessment}
+                            aria-disabled={assessmentPending || !assessment}
+                            sx={{ cursor: assessmentPending ? 'progress' : 'pointer' }}
                             onClick={() => {
+                              if (assessmentPending) return;
                               setNewEventTitle(`${activityType} (${selectedDistrict})`);
                               setAddEventDialogOpen(true);
                             }}
@@ -1289,14 +1411,7 @@ function App() {
                           onChange={(e) => setCustomSchoolName(e.target.value)}
                         />
 
-                        <TextField
-                          fullWidth
-                          type="date"
-                          label="Event Date"
-                          InputLabelProps={{ shrink: true }}
-                          value={eventDate}
-                          onChange={(e) => handleDateChange(e.target.value)}
-                        />
+                        <DateField label="Event Date" value={eventDate} onChange={handleDateChange} onValidityChange={setDateInputValid} />
 
                         <TextField
                           select
@@ -1329,7 +1444,7 @@ function App() {
                       <Typography
                         variant="caption"
                         color="text.secondary"
-                        sx={{ mt: 1, display: 'block' }}
+                        sx={{ mt: 1, display: 'block', minHeight: '2.8em', lineHeight: 1.4 }}
                       >
                         📍 Selected District: <strong>{selectedDistrict}</strong> (
                         {stations.find((s) => s.district === selectedDistrict)?.corridor ||
@@ -1338,9 +1453,30 @@ function App() {
                       </Typography>
                     </Card>
 
-                    {/* 4 KPI Summary Tiles */}
+                    <Box>
+                      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, gap: 1.5 }}>
+                        <Button size="small" variant="outlined" sx={{ flexShrink: 0 }} startIcon={modelLoading ? <CircularProgress size={14} color="inherit" /> : null} disabled={assessmentPending || !assessment || modelLoading} onClick={handleRunModel}>
+                          {modelLoading ? 'Running model…' : 'Run Model Prediction'}
+                        </Button>
+                        <Typography variant="caption" color="text.secondary">
+                          Main readings and charts use the precomputed dataset.
+                        </Typography>
+                      </Box>
+                      {modelResult && <Alert className="prediction-result" role="status" severity="info" sx={{ mt: 1 }}>
+                        <Box>
+                          <strong>Model prediction: {formatApi(modelResult.predicted_api)} API</strong>
+                          {' · '}{modelResult.moe_safety?.tier_label}
+                        </Box>
+                        <Typography component="div" variant="caption" sx={{ display: 'block', mt: 0.5 }}>{modelResult.basis}</Typography>
+                      </Alert>}
+                      {modelError && <Alert severity="error" sx={{ mt: 1 }}>{modelError}</Alert>}
+                      {assessmentError && <Alert severity="error" sx={{ mt: 1 }}>{assessmentError}</Alert>}
+                    </Box>
+
+                    {/* Replay card entrances only when a new assessment arrives. */}
                     {assessment && (
                       <Box
+                        key={loadedAssessmentKey}
                         sx={{
                           display: 'grid',
                           gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' },
@@ -1350,7 +1486,7 @@ function App() {
                         <KpiCard
                           icon={<SpeedIcon />}
                           label="PREDICTED API"
-                          value={assessment.prediction?.predicted_api}
+                          value={formatApi(assessment.prediction?.predicted_api)}
                           sub={assessment.moe_safety?.tier_label}
                           color="#2563eb"
                           numeric
@@ -1366,7 +1502,7 @@ function App() {
                           icon={<TrendingUpIcon />}
                           label="CLEANEST HOUR TODAY"
                           value={assessment.time_optimization?.safest_daytime_label || '—'}
-                          sub={`${assessment.time_optimization?.safest_daytime_api} API`}
+                          sub={`${formatApi(assessment.time_optimization?.safest_daytime_api)} API`}
                           color="#16a34a"
                         />
                         <KpiCard
@@ -1421,12 +1557,12 @@ function App() {
                                 : 'error'
                             }
                             icon={getTierIcon(assessment.moe_safety?.risk_key)}
-                            sx={{ mt: 2 }}
+                            sx={{ mt: 2, minHeight: { xs: 192, sm: 168 }, alignItems: 'flex-start' }}
                           >
                             <Typography variant="body2" sx={{ fontWeight: 700 }}>
                               {assessment.moe_safety?.headline}
                             </Typography>
-                            <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
+                            <Typography component="div" variant="caption" sx={{ display: 'block', mt: 0.5 }}>
                               {assessment.moe_safety?.advisories?.[0]}
                             </Typography>
                           </Alert>
@@ -1451,7 +1587,7 @@ function App() {
                                 assessment.time_optimization?.safest_daytime_hour || 7
                               }
                               thresholds={assessment.moe_safety?.thresholds}
-                              onSelectHour={(hr) => setStartHour(hr)}
+                              onSelectHour={handleChartHourSelect}
                             />
                           ) : (
                             <ShapAttributionD3
@@ -1474,7 +1610,7 @@ function App() {
                     {/* Minimal Title Header with Buttons */}
                     <PageHeader
                       title="12-Month Seasonal Event Planner"
-                      subtitle="Identify the safest months across Malaysia and schedule events for upcoming years."
+                      subtitle="Plan events using historical seasonal estimates. The same estimates apply across planning years; these are not year-specific forecasts."
                       actions={
                         <Stack
                           direction="row"
@@ -1488,7 +1624,8 @@ function App() {
                           <Button
                             variant="outlined"
                             startIcon={<DownloadIcon />}
-                            onClick={() => exportSeasonalPlannerToCsv(plannerData)}
+                            disabled={!plannerData || plannerPending || Boolean(plannerError)}
+                          onClick={() => exportSeasonalPlannerToCsv(plannerData)}
                             sx={{ height: 40, px: 2 }}
                           >
                             Export CSV
@@ -1579,16 +1716,19 @@ function App() {
                       </Box>
                     </Card>
 
+                    {plannerError && <Alert severity="error">{plannerError}</Alert>}
                     {plannerData && (
                       <Box
+                        aria-busy={plannerPending}
                         sx={{
+                          position: 'relative',
                           display: 'grid',
                           gridTemplateColumns: { xs: '1fr', lg: '8fr 4fr' },
                           gap: 3,
                           width: '100%',
                         }}
                       >
-                        <Card sx={{ p: { xs: 2, sm: 3 } }}>
+                        <Card inert={plannerPending || Boolean(plannerError)} sx={{ p: { xs: 2, sm: 3 } }}>
                           <Box
                             sx={{
                               display: 'flex',
@@ -1636,17 +1776,17 @@ function App() {
                               return (
                                 <Card
                                   key={m.month}
-                                  onClick={() => handleMonthChange(m.month)}
+                                  onClick={() => { if (!plannerPending && !plannerError) handleMonthChange(m.month); }}
                                   sx={{
                                     p: { xs: 1.2, sm: 1.5 },
                                     textAlign: 'center',
                                     cursor: 'pointer',
-                                    border: isSelected ? '2px solid' : '1px solid',
+                                    border: '2px solid',
                                     borderColor: isSelected ? 'primary.main' : 'divider',
                                     position: 'relative',
                                     borderRadius: 3,
-                                    transition: 'all 0.15s ease',
-                                    '&:hover': { transform: 'translateY(-2px)' },
+                                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+                                    '&:hover': { boxShadow: '0 2px 8px rgba(37, 99, 235, 0.12)' },
                                   }}
                                 >
                                   {isOptimal && (
@@ -1668,7 +1808,7 @@ function App() {
                                     variant="h6"
                                     sx={{ fontWeight: 900, color: chipStyle.color, my: 0.3 }}
                                   >
-                                    {m.effective_api}
+                                    {formatApi(m.effective_api)}
                                   </Typography>
                                   <Chip
                                     size="small"
@@ -1690,7 +1830,7 @@ function App() {
                         </Card>
 
                         {/* Planning Recommendations */}
-                        <Card sx={{ p: { xs: 2, sm: 3 } }}>
+                        <Card inert={plannerPending || Boolean(plannerError)} sx={{ p: { xs: 2, sm: 3 } }}>
                           <Typography variant="h6" sx={{ mb: 2 }}>
                             {selectedYear} Recommendations
                           </Typography>
@@ -1795,14 +1935,14 @@ function App() {
                           </Alert>
                           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
                             <Card sx={{ p: 2, border: comparisonData.preferred_district === comparisonData.district_a.district ? '2px solid #16a34a' : '1px solid #e2e8f0' }}>
-                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                              <Stack sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                                 <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{comparisonData.district_a.district}</Typography>
                                 {comparisonData.preferred_district === comparisonData.district_a.district && (
-                                  <Chip label="Cleaner Option" color="success" size="small" sx={{ fontWeight: 700 }} />
+                                  <Chip label="Cleaner Option" color="success" size="small" sx={{ fontWeight: 700, ml: 'auto', flexShrink: 0 }} />
                                 )}
                               </Stack>
                               <Typography variant="h4" sx={{ fontWeight: 900, color: comparisonData.district_a.badge_color, my: 1 }}>
-                                {comparisonData.district_a.predicted_api} API
+                                {formatApi(comparisonData.district_a.predicted_api)} API
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
                                 MOE Tier: <strong>{comparisonData.district_a.tier_label}</strong>
@@ -1813,14 +1953,14 @@ function App() {
                             </Card>
 
                             <Card sx={{ p: 2, border: comparisonData.preferred_district === comparisonData.district_b.district ? '2px solid #16a34a' : '1px solid #e2e8f0' }}>
-                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                              <Stack sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                                 <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>{comparisonData.district_b.district}</Typography>
                                 {comparisonData.preferred_district === comparisonData.district_b.district && (
-                                  <Chip label="Cleaner Option" color="success" size="small" sx={{ fontWeight: 700 }} />
+                                  <Chip label="Cleaner Option" color="success" size="small" sx={{ fontWeight: 700, ml: 'auto', flexShrink: 0 }} />
                                 )}
                               </Stack>
                               <Typography variant="h4" sx={{ fontWeight: 900, color: comparisonData.district_b.badge_color, my: 1 }}>
-                                {comparisonData.district_b.predicted_api} API
+                                {formatApi(comparisonData.district_b.predicted_api)} API
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
                                 MOE Tier: <strong>{comparisonData.district_b.tier_label}</strong>
@@ -1861,7 +2001,15 @@ function App() {
                         </Button>
                       </Box>
                       <TableContainer sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-                        <Table size="small">
+                        <Table size="small" sx={{ tableLayout: 'fixed', width: '100%', minWidth: 1000, '& td .MuiTypography-root': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }}>
+                          <colgroup>
+                            <col style={{ width: '27%' }} />
+                            <col style={{ width: '23%' }} />
+                            <col style={{ width: '14%' }} />
+                            <col style={{ width: '13%' }} />
+                            <col style={{ width: '15%' }} />
+                            <col style={{ width: '8%' }} />
+                          </colgroup>
                           <TableHead>
                             <TableRow>
                               <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -1889,7 +2037,11 @@ function App() {
                           </TableHead>
                           <TableBody>
                             {scheduledEvents.map((ev) => (
-                              <TableRow key={ev.event_id} hover>
+                              <TableRow key={ev.event_id} hover className={`event-row${removingEvents.includes(ev.event_id) ? ' event-row-exit' : ''}`}
+                                onAnimationEnd={(event) => {
+                                  if (event.target === event.currentTarget && event.animationName === 'eventDeparture') finishEventRemoval(ev.event_id);
+                                }}
+                                aria-busy={deletingEvents.includes(ev.event_id)}>
                                 <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                     {ev.event_title}
@@ -1901,9 +2053,9 @@ function App() {
                                     {ev.district}
                                   </Typography>
                                 </TableCell>
-                                <TableCell sx={{ whiteSpace: 'nowrap' }}>{ev.event_date}</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(ev.event_date)}</TableCell>
                                 <TableCell sx={{ fontWeight: 900, whiteSpace: 'nowrap' }}>
-                                  {ev.predicted_api} API
+                                  {formatApi(ev.predicted_api)} API
                                 </TableCell>
                                 <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                   <Chip
@@ -1913,12 +2065,13 @@ function App() {
                                   />
                                 </TableCell>
                                 <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
-                                  <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 0.5 }}>
                                     {ev.start_hour !== (ev.safest_hour || 7) && (
                                       <Tooltip title="Shift to cleanest morning hour">
                                         <IconButton
                                           size="small"
                                           color="primary"
+                                          disabled={deletingEvents.includes(ev.event_id)}
                                           onClick={() => handleOptimizeEvent(ev, 'hour')}
                                         >
                                           <BoltIcon fontSize="small" />
@@ -1928,11 +2081,13 @@ function App() {
                                     <IconButton
                                       size="small"
                                       color="error"
+                                      disabled={deletingEvents.includes(ev.event_id)}
+                                      aria-label={`Delete ${ev.event_title}`}
                                       onClick={() => handleDeleteEvent(ev.event_id)}
                                     >
-                                      <DeleteIcon fontSize="small" />
+                                      {deletingEvents.includes(ev.event_id) ? <CircularProgress size={18} color="inherit" /> : <DeleteIcon fontSize="small" />}
                                     </IconButton>
-                                  </Stack>
+                                  </Box>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -2062,14 +2217,7 @@ function App() {
                 value={customSchoolName}
                 onChange={(e) => setCustomSchoolName(e.target.value)}
               />
-              <TextField
-                label="Date"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={eventDate}
-                onChange={(e) => handleDateChange(e.target.value)}
-              />
+              <DateField label="Date" value={eventDate} onChange={handleDateChange} onValidityChange={setDateInputValid} />
               <TextField
                 label="Students (1–5000)"
                 type="number"
@@ -2114,6 +2262,7 @@ function App() {
           </Container>
         </Box>
       </Box>
+      {location.pathname === '/checker' && <SafetyPrintReport assessment={assessment} modelResult={modelResult} />}
     </ThemeProvider>
   );
 }

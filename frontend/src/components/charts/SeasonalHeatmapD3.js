@@ -1,3 +1,5 @@
+import useReducedMotion from '../../hooks/useReducedMotion';
+import { formatApi } from '../../utils/formatApi';
 /**
  * SeasonalHeatmapD3.js
  * ============================================================================
@@ -22,6 +24,7 @@ const SeasonalHeatmapD3 = ({
   corridorName = 'All Corridors',
   onSelectStationMonth = null,
 }) => {
+  const reducedMotion = useReducedMotion();
   const svgRef = useRef(null);
   const [metricField, setMetricField] = useState('planning_risk_index');
   const [stationScope, setStationScope] = useState('selected');
@@ -135,7 +138,12 @@ const SeasonalHeatmapD3 = ({
       .attr('font-size', isSingleStation ? '11px' : '9.5px')
       .attr('font-weight', '700')
       .attr('fill', (d) => getTextColor(d[metricField]))
-      .text((d) => Number(d[metricField]).toFixed(0));
+      .text((d) => formatApi(d[metricField]));
+
+    if (!reducedMotion) {
+      g.selectAll('rect').attr('opacity', 0)
+        .transition().duration(300).delay((d, i) => (i % 12) * 18).attr('opacity', 1);
+    }
 
     const xAxis = g.append('g').call(d3.axisTop(xScale).tickSize(0));
     xAxis.select('.domain').remove();
@@ -161,7 +169,7 @@ const SeasonalHeatmapD3 = ({
       svg.on('.brush', null);
       svg.on('.zoom', null);
     };
-  }, [seasonalCells, metricField, stationScope, selectedDistrict, onSelectStationMonth]);
+  }, [seasonalCells, metricField, stationScope, selectedDistrict, onSelectStationMonth, reducedMotion]);
 
   const hasSpecificStation = Boolean(selectedDistrict && selectedDistrict !== 'All Stations');
 
@@ -223,7 +231,7 @@ const SeasonalHeatmapD3 = ({
           {hoveredCell && (
             <Chip
               size="small"
-              label={`${hoveredCell.district} (${hoveredCell.month_short}): ${hoveredCell.planning_risk_index} Risk • ${hoveredCell.mean_temp}°C (Click to inspect)`}
+              label={`${hoveredCell.district} (${hoveredCell.month_short}): ${formatApi(hoveredCell.planning_risk_index)} Risk • ${hoveredCell.mean_temp}°C (Click to inspect)`}
               sx={{ fontWeight: 600, bgcolor: '#eff6ff', color: '#1d4ed8' }}
             />
           )}

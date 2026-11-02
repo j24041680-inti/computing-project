@@ -21,7 +21,7 @@ from fastapi import FastAPI, HTTPException, Query, Path, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ValidationError
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, "models")
@@ -52,6 +52,7 @@ app.add_middleware(
 )
 
 
+@app.exception_handler(ValidationError)
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     errors = []
@@ -125,6 +126,7 @@ try:
         REGRESSOR = xgb.XGBRegressor()
         REGRESSOR.load_model(reg_json_path)
 except Exception as err:
+    REGRESSOR = None
     print(f"[SchoolAir] Notice: Could not load champion_regressor.json: {err}")
 
 try:
@@ -133,6 +135,7 @@ try:
         CLASSIFIER = xgb.XGBClassifier()
         CLASSIFIER.load_model(clf_json_path)
 except Exception as err:
+    CLASSIFIER = None
     print(f"[SchoolAir] Notice: Could not load champion_classifier.json: {err}")
 
 # 2. Fallback to .joblib if JSON wasn't loaded
@@ -264,13 +267,41 @@ def save_scheduled_events(events: List[Dict[str, Any]]) -> None:
         json.dump(events, f, indent=2)
 
 
-class EventAssessmentRequest(BaseModel):
+class ValidatedEventFields(BaseModel):
+    # Reuse semantic validation for body models and requests built by GET routes.
+    @field_validator("event_date", check_fields=False)
+    @classmethod
+    def validate_calendar_date(cls, value):
+        if value is not None:
+            datetime.strptime(value, "%Y-%m-%d")
+        return value
+
+    @field_validator("cohort", check_fields=False)
+    @classmethod
+    def validate_event_cohort(cls, value):
+        if value is not None:
+            value = value.lower().strip()
+            if value not in {"general", "athletic", "high-intensity", "asthmatic", "sensitive"}:
+                raise ValueError("Invalid student cohort")
+        return value
+
+    @field_validator("weather_regime", check_fields=False)
+    @classmethod
+    def validate_event_regime(cls, value):
+        if value is not None:
+            value = value.lower().strip()
+            if value not in {"typical", "peak_haze", "custom_override"}:
+                raise ValueError("Invalid weather regime")
+        return value
+
+
+class EventAssessmentRequest(ValidatedEventFields):
     school_id: Optional[str] = Field(default=None)
     district: Optional[str] = Field(default="Petaling Jaya")
     custom_school_name: Optional[str] = Field(default=None, max_length=140)
     custom_lat: Optional[float] = Field(default=None, ge=0.8, le=7.5)
     custom_lon: Optional[float] = Field(default=None, ge=99.5, le=119.5)
-    event_date: Optional[str] = Field(default="2026-04-15")
+    event_date: Optional[str] = Field(default=None)
     month: int = Field(default=4, ge=1, le=12)
     start_hour: int = Field(default=8, ge=0, le=23)
     duration_hours: int = Field(default=2, ge=1, le=12)
@@ -300,7 +331,7 @@ class EventAssessmentRequest(BaseModel):
         return v.lower().strip()
 
 
-class ScheduledEventCreate(BaseModel):
+class ScheduledEventCreate(ValidatedEventFields):
     event_title: str = Field(..., min_length=3, max_length=120)
     school_name: str = Field(..., min_length=2, max_length=140)
     district: str = Field(..., min_length=2, max_length=60)
@@ -314,7 +345,7 @@ class ScheduledEventCreate(BaseModel):
     notes: Optional[str] = Field(default="", max_length=300)
 
 
-class ScheduledEventUpdate(BaseModel):
+class ScheduledEventUpdate(ValidatedEventFields):
     event_title: Optional[str] = Field(default=None, min_length=3, max_length=120)
     event_date: Optional[str] = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     start_hour: Optional[int] = Field(default=None, ge=6, le=20)
@@ -422,21 +453,7 @@ def compute_event_assessment(req: EventAssessmentRequest) -> Dict[str, Any]:
                 "Time & Seasonal Cycle": round(float(c_map.get("hour", 0.0) + c_map.get("month", 0.0) + c_map.get("day_of_week", 0.0)), 3),
             }
         else:
-            # Fallback estimation if XGBoost live model is not loaded in this environment
-            predicted_api = round(float(np.clip(cur_api * 1.02 + (cur_temp - 30.0) * 0.4, 10.0, 500.0)), 2)
-            peak_window_api = round(predicted_api * 1.05, 2)
-            confidence_pct = 92.5
-            shap_raw = {
-                "Current Station API": round(cur_api * 0.45, 3),
-                "1-Hour Autoregressive Lag": round(lag_1h * 0.25, 3),
-                "24-Hour Diurnal Persistence": round(lag_24h * 0.15, 3),
-                "6-Hour Moving Average": round(roll_6h * 0.10, 3),
-                "Surface Temperature (°C)": round((cur_temp - 25.0) * 0.5, 3),
-                "Relative Humidity (%)": round((cur_hum - 70.0) * -0.1, 3),
-                "Wind Speed Advection (m/s)": round(cur_wind * -0.8, 3),
-                "Corridor Geospatial Baseline": 1.25,
-                "Time & Seasonal Cycle": 0.85,
-            }
+            raise HTTPException(status_code=503, detail="Live prediction models are unavailable. Use seasonal lookup or restore the model files.")
         weather_snapshot = {
             "baseline_api": round(cur_api, 1),
             "temperature": round(cur_temp, 1),
@@ -653,7 +670,7 @@ def compare_districts_air_quality(
         recommendation = f"{target_b} is cleaner by {diff} API points compared to {target_a}."
         preferred = target_b
     else:
-        recommendation = f"Both {target_a} and {target_b} exhibit identical expected API ({api_a})."
+        recommendation = f"Both {target_a} and {target_b} exhibit identical expected API ({api_a:.1f})."
         preferred = "Equal"
 
     return {
@@ -688,7 +705,7 @@ def get_forecast_lookup(
     district: str = "Petaling Jaya",
     school_id: Optional[str] = None,
     custom_school_name: Optional[str] = None,
-    event_date: Optional[str] = "2026-04-15",
+    event_date: Optional[str] = None,
     month: int = 4,
     start_hour: int = 8,
     duration_hours: int = 2,
@@ -700,7 +717,7 @@ def get_forecast_lookup(
         school_id=school_id if isinstance(school_id, str) else None,
         district=district if isinstance(district, str) else "Petaling Jaya",
         custom_school_name=custom_school_name if isinstance(custom_school_name, str) else None,
-        event_date=event_date if isinstance(event_date, str) else "2026-04-15",
+        event_date=event_date if isinstance(event_date, str) else None,
         month=month if isinstance(month, int) else 4,
         start_hour=start_hour if isinstance(start_hour, int) else 8,
         duration_hours=duration_hours if isinstance(duration_hours, int) else 2,
@@ -714,6 +731,41 @@ def get_forecast_lookup(
 @app.post("/api/v1/assess-event", tags=["AI Forecast Lookup"])
 def post_assess_event(payload: EventAssessmentRequest):
     return compute_event_assessment(payload)
+
+
+@app.post("/api/v1/model-prediction", tags=["AI Forecast Lookup"])
+def run_model_prediction(payload: EventAssessmentRequest):
+    """Run the regressor again using stored seasonal features for the event window."""
+    if payload.weather_regime != "typical" or any(value is not None for value in (
+        payload.override_api, payload.override_temperature,
+        payload.override_humidity, payload.override_wind_speed,
+    )):
+        raise HTTPException(status_code=422, detail="This prediction uses typical historical features without overrides.")
+    if REGRESSOR is None:
+        raise HTTPException(status_code=503, detail="The prediction model is unavailable. Dataset readings remain available.")
+
+    baseline = compute_event_assessment(payload)
+    month = baseline["event_context"]["month"]
+    hours = [(payload.start_hour + h) % 24 for h in range(payload.duration_hours)]
+    rows = HOURLY_FORECASTS_DF[
+        (HOURLY_FORECASTS_DF["district"] == baseline["station"]["district"])
+        & (HOURLY_FORECASTS_DF["month"] == month)
+        & HOURLY_FORECASTS_DF["hour"].isin(hours)
+    ].copy()
+    # Match the dataset generator's typical seasonal features and clipping bounds.
+    rows["API"] = rows["mean_api"]
+    rows["day_of_week"] = 2
+    predictions = np.clip(REGRESSOR.predict(rows[FEATURE_COLS]), 15.0, 350.0)
+    predicted_api = float(np.mean(predictions))
+    return {
+        "status": "success",
+        "predicted_api": round(predicted_api, 1),
+        "dataset_api": baseline["prediction"]["predicted_api"],
+        "moe_safety": evaluate_moe_directive(predicted_api, payload.cohort, payload.activity_type),
+        "station": baseline["station"],
+        "event_context": baseline["event_context"],
+        "basis": "Recomputed from historical seasonal features for the selected event hours. Stored inputs are rounded, so small differences from precomputed readings are expected.",
+    }
 
 
 @app.get("/api/v1/seasonal-planner", tags=["Seasonal Event Planner"])
@@ -768,6 +820,7 @@ def get_seasonal_planner(
         "state": str(sub.iloc[0]["state"]),
         "corridor": str(sub.iloc[0]["corridor"]),
         "year": target_year,
+        "forecast_basis": "Historical seasonal estimates reused across planning years; not year-specific forecasts.",
         "cohort": target_cohort,
         "weather_regime": target_regime,
         "optimal_month": best_months[0],
@@ -908,6 +961,7 @@ def update_scheduled_event(event_id: str = Path(...), payload: ScheduledEventUpd
     if payload.cohort is not None: existing["cohort"] = payload.cohort
     if payload.participants_count is not None: existing["participants_count"] = payload.participants_count
     if payload.weather_regime is not None: existing["weather_regime"] = payload.weather_regime
+    if payload.notes is not None: existing["notes"] = payload.notes
 
     assessment = compute_event_assessment(
         EventAssessmentRequest(
