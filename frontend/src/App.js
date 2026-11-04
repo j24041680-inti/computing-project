@@ -568,11 +568,10 @@ function App() {
   }, [fetchSeasonalPlanner]);
 
   const fetchAnalyticsData = useCallback(async (signal) => {
-    setAnalyticsData(null);
     try {
       const params = { district: analyticsDistrict, corridor: analyticsCorridor };
       const res = await axios.get(`${API_BASE}/analytics`, { params, signal });
-      setAnalyticsData(res.data);
+      if (!signal.aborted) setAnalyticsData({ ...res.data, filters: params });
     } catch (err) {
       if (!axios.isCancel(err)) setSnackbar({ open: true, severity: 'error', message: 'Unable to load analytics.' });
     }
@@ -2204,8 +2203,8 @@ function App() {
                       {analyticsTab === 1 && analyticsData && (
                         <SeasonalHeatmapD3
                           seasonalCells={analyticsData.seasonal_heatmap || []}
-                          selectedDistrict={analyticsDistrict}
-                          corridorName={analyticsCorridor}
+                          selectedDistrict={analyticsData.filters.district}
+                          corridorName={analyticsData.filters.corridor}
                           onSelectStationMonth={(dist, mInt) => {
                             setSelectedDistrict(dist);
                             handleMonthChange(mInt);

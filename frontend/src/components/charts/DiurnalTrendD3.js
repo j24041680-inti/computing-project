@@ -121,6 +121,31 @@ const DiurnalTrendD3 = ({
         .attr('stroke-dasharray', '5,4').attr('opacity', 0.75).attr('d', peakLine);
     }
 
+    if (overlayMetric === 'temperature') {
+      const hasTemperature = (d) => d.temperature != null && Number.isFinite(d.temperature);
+      const [minTemp, maxTemp] = d3.extent(diurnalSeries.filter(hasTemperature), (d) => d.temperature);
+
+      if (minTemp !== undefined) {
+        const padding = Math.max(2, (maxTemp - minTemp) * 0.1);
+        const tempScale = d3.scaleLinear()
+          .domain([minTemp - padding, maxTemp + padding]).nice().range([innerH, 0]);
+        const tempColor = dark ? '#fcd34d' : '#92400e';
+        const tempLine = d3.line().defined(hasTemperature)
+          .x((d) => xScale(d.hour)).y((d) => tempScale(d.temperature))
+          .curve(d3.curveMonotoneX);
+
+        g.append('path').datum(diurnalSeries).attr('fill', 'none')
+          .attr('stroke', tempColor).attr('stroke-width', 2)
+          .attr('stroke-dasharray', '5,4').attr('d', tempLine);
+
+        const tempAxis = g.append('g').attr('transform', `translate(${innerW}, 0)`)
+          .attr('color', tempColor).call(d3.axisRight(tempScale).ticks(5));
+        tempAxis.selectAll('text').attr('font-size', '10.5px');
+        tempAxis.append('text').attr('x', 8).attr('y', -9)
+          .attr('fill', tempColor).attr('text-anchor', 'start').text('°C');
+      }
+    }
+
     // Main Line
     const mainLine = d3.line()
       .x((d) => xScale(d.hour)).y((d) => yScale(d.predicted_api))
@@ -348,20 +373,27 @@ const DiurnalTrendD3 = ({
         )}
       </Box>
 
+      {mode === 'diurnal24h' && (
+        <Box sx={{ minHeight: 28, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          {hoveredPoint && (
+            <Chip size="small" label={`${hoveredPoint.time_label} • ${formatApi(hoveredPoint.predicted_api)} API • ${hoveredPoint.temperature}°C`}
+              sx={{ fontWeight: 600, bgcolor: dark ? '#243858' : '#eff6ff', color: dark ? 'text.primary' : '#1d4ed8' }} />
+          )}
+        </Box>
+      )}
+
       <Box sx={mode === 'diurnal24h' ? { flex: '1 0 auto', display: 'flex', alignItems: 'center' } : undefined}>
         <svg ref={svgRef} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="D3 Chart" />
       </Box>
 
-      <Box sx={{ minHeight: 28, mt: 1 }}>
-        {mode === 'diurnal24h' && hoveredPoint && (
-          <Chip size="small" label={`${hoveredPoint.time_label} • ${formatApi(hoveredPoint.predicted_api)} API • ${hoveredPoint.temperature}°C`}
-            sx={{ fontWeight: 600, bgcolor: '#eff6ff', color: '#1d4ed8' }} />
-        )}
-        {mode === 'multidayBrush' && brushStats && (
-          <Chip size="small" label={`Zoomed: ${brushStats.start} – ${brushStats.end} (${brushStats.hours}h) • Peak: ${brushStats.peakActual} API • Avg: ${brushStats.avgActual} API`}
-            sx={{ fontWeight: 600, bgcolor: dark ? '#243858' : '#f1f5f9', color: 'text.primary' }} />
-        )}
-      </Box>
+      {mode === 'multidayBrush' && (
+        <Box sx={{ minHeight: 28, mt: 1 }}>
+          {brushStats && (
+            <Chip size="small" label={`Zoomed: ${brushStats.start} – ${brushStats.end} (${brushStats.hours}h) • Peak: ${brushStats.peakActual} API • Avg: ${brushStats.avgActual} API`}
+              sx={{ fontWeight: 600, bgcolor: dark ? '#243858' : '#f1f5f9', color: 'text.primary' }} />
+          )}
+        </Box>
+      )}
     </Box>
   );
 };

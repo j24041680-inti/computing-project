@@ -1,4 +1,3 @@
-import useReducedMotion from '../../hooks/useReducedMotion';
 import { formatApi } from '../../utils/formatApi';
 /**
  * SeasonalHeatmapD3.js
@@ -12,7 +11,7 @@ import { formatApi } from '../../utils/formatApi';
  *  - Clean D3 cleanup on unmount.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { Box, ToggleButton, ToggleButtonGroup, Chip, Typography, Stack } from '@mui/material';
 
@@ -24,20 +23,19 @@ const SeasonalHeatmapD3 = ({
   corridorName = 'All Corridors',
   onSelectStationMonth = null,
 }) => {
-  const reducedMotion = useReducedMotion();
   const svgRef = useRef(null);
   const [metricField, setMetricField] = useState('planning_risk_index');
   const [stationScope, setStationScope] = useState('selected');
   const [hoveredCell, setHoveredCell] = useState(null);
 
   // Sync stationScope when "All Stations" is explicitly chosen in the parent dropdown
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (selectedDistrict === 'All Stations') {
       setStationScope('all');
     }
   }, [selectedDistrict]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const svgEl = svgRef.current;
     if (!svgEl || !seasonalCells || seasonalCells.length === 0) return;
 
@@ -140,11 +138,6 @@ const SeasonalHeatmapD3 = ({
       .attr('fill', (d) => getTextColor(d[metricField]))
       .text((d) => formatApi(d[metricField]));
 
-    if (!reducedMotion) {
-      g.selectAll('rect').attr('opacity', 0)
-        .transition().duration(300).delay((d, i) => (i % 12) * 18).attr('opacity', 1);
-    }
-
     const xAxis = g.append('g').call(d3.axisTop(xScale).tickSize(0));
     xAxis.select('.domain').remove();
     xAxis.selectAll('text').attr('font-size', '10.5px').attr('font-weight', '700').attr('fill', 'var(--chart-ink, #334155)');
@@ -169,7 +162,7 @@ const SeasonalHeatmapD3 = ({
       svg.on('.brush', null);
       svg.on('.zoom', null);
     };
-  }, [seasonalCells, metricField, stationScope, selectedDistrict, onSelectStationMonth, reducedMotion]);
+  }, [seasonalCells, metricField, stationScope, selectedDistrict, onSelectStationMonth]);
 
   const hasSpecificStation = Boolean(selectedDistrict && selectedDistrict !== 'All Stations');
 
