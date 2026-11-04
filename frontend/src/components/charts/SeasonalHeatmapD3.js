@@ -107,7 +107,7 @@ const SeasonalHeatmapD3 = ({
         const isSelected = isSpecificSelected && d.district?.toLowerCase() === selectedDistrict.toLowerCase();
         d3.select(this)
           .select('rect')
-          .attr('stroke', isSelected ? '#2563eb' : 'none')
+          .attr('stroke', isSelected ? 'var(--chart-blue, #2563eb)' : 'none')
           .attr('stroke-width', isSelected ? 2 : 0);
         setHoveredCell(null);
       })
@@ -123,7 +123,7 @@ const SeasonalHeatmapD3 = ({
       .attr('fill', (d) => getColor(d[metricField]))
       .attr('stroke', (d) =>
         isSpecificSelected && d.district?.toLowerCase() === selectedDistrict.toLowerCase()
-          ? '#2563eb'
+          ? 'var(--chart-blue, #2563eb)'
           : 'none'
       )
       .attr('stroke-width', (d) =>
@@ -147,7 +147,7 @@ const SeasonalHeatmapD3 = ({
 
     const xAxis = g.append('g').call(d3.axisTop(xScale).tickSize(0));
     xAxis.select('.domain').remove();
-    xAxis.selectAll('text').attr('font-size', '10.5px').attr('font-weight', '700').attr('fill', '#334155');
+    xAxis.selectAll('text').attr('font-size', '10.5px').attr('font-weight', '700').attr('fill', 'var(--chart-ink, #334155)');
 
     const yAxis = g.append('g').call(d3.axisLeft(yScale).tickSize(0));
     yAxis.select('.domain').remove();
@@ -157,7 +157,7 @@ const SeasonalHeatmapD3 = ({
         isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? '800' : '600'
       )
       .attr('fill', (d) =>
-        isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? '#1d4ed8' : '#475569'
+        isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? 'var(--chart-blue, #1d4ed8)' : 'var(--chart-label, #475569)'
       )
       .text((d) =>
         isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? `▶ ${d}` : d
@@ -221,7 +221,7 @@ const SeasonalHeatmapD3 = ({
         <Typography variant="caption" color="text.secondary">
           {stationScope === 'all' && hasSpecificStation ? (
             <span>
-              Highlighted: <strong style={{ color: '#1d4ed8' }}>▶ {selectedDistrict}</strong> (selected station)
+              Highlighted: <strong style={{ color: 'var(--chart-blue, #1d4ed8)' }}>▶ {selectedDistrict}</strong> (selected station)
             </span>
           ) : (
             'Click any station-month cell to inspect in Safety Checker'

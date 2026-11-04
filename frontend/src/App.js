@@ -1,3 +1,4 @@
+import { lighten } from '@mui/material/styles';
 import DateField from './components/DateField';
 import { formatDate } from './utils/dateFormat';
 import SafetyPrintReport from './components/SafetyPrintReport';
@@ -15,7 +16,7 @@ import useReducedMotion from './hooks/useReducedMotion';
 
 import { formatApi } from './utils/formatApi';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Link as RouterLink, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import {
   ThemeProvider,
   createTheme,
@@ -173,6 +174,8 @@ function AnimatedNumber({ value, duration = 1000, suffix = '' }) {
   );
 }
 
+const readableAccent = (color) => (theme) => theme.palette.mode === 'dark' ? lighten(color, 0.45) : color;
+
 function KpiCard({ icon, label, value, sub, color = '#2563eb', numeric = false, suffix = '' }) {
   return (
     <Card
@@ -195,7 +198,7 @@ function KpiCard({ icon, label, value, sub, color = '#2563eb', numeric = false, 
       }}
     >
       <Stack direction="row" alignItems="center" spacing={1.2} sx={{ mb: 1 }}>
-        <Avatar sx={{ width: 32, height: 32, bgcolor: `${color}15`, color }}>
+        <Avatar sx={{ width: 32, height: 32, bgcolor: `${color}15`, color: readableAccent(color) }}>
           {React.cloneElement(icon, { fontSize: 'small' })}
         </Avatar>
         <Typography
@@ -352,7 +355,7 @@ function App() {
     let baseTheme = createTheme({
       palette: {
         mode: darkMode ? 'dark' : 'light',
-        primary: { main: '#2563eb', light: '#3b82f6', dark: '#1d4ed8' },
+        primary: { main: darkMode ? '#93c5fd' : '#2563eb', light: '#3b82f6', dark: '#1d4ed8' },
         secondary: { main: '#6366f1' },
         success: { main: '#16a34a' },
         warning: { main: '#ca8a04' },
@@ -771,6 +774,16 @@ function App() {
       <Box
         className={location.pathname === '/checker' ? 'app-screen safety-checker-screen' : 'app-screen'}
         sx={{
+          colorScheme: darkMode ? 'dark' : 'light',
+          '--chart-gauge-value': darkMode ? theme.palette.text.primary : undefined,
+          '--chart-safe': darkMode ? '#86efac' : '#16a34a',
+          '--chart-peak': darkMode ? '#fca5a5' : '#dc2626',
+          '--chart-ink': theme.palette.text.primary,
+          '--chart-label': theme.palette.text.secondary,
+          '--chart-grid': darkMode ? '#475569' : '#e2e8f0',
+          '--chart-blue': darkMode ? '#93c5fd' : '#2563eb',
+          '--chart-surface': theme.palette.background.paper,
+          '--chart-highlight': darkMode ? '#243858' : '#eff6ff',
           display: 'flex',
           flexDirection: 'column',
           minHeight: '100vh',
@@ -1158,14 +1171,14 @@ function App() {
                               mx: 'auto',
                               mb: 1,
                               bgcolor: `${stat.color}15`,
-                              color: stat.color,
+                              color: readableAccent(stat.color),
                             }}
                           >
                             {stat.icon}
                           </Avatar>
                           <Typography
                             variant="h5"
-                            sx={{ fontWeight: 900, color: stat.color, fontSize: '1.35rem' }}
+                            sx={{ fontWeight: 900, color: readableAccent(stat.color), fontSize: '1.35rem' }}
                           >
                             {stat.decimal ? '±' : ''}
                             {typeof stat.value === 'number' ? (
@@ -1246,7 +1259,7 @@ function App() {
                                   width: 40,
                                   height: 40,
                                   bgcolor: `${mod.color}15`,
-                                  color: mod.color,
+                                  color: readableAccent(mod.color),
                                 }}
                               >
                                 {mod.icon}
@@ -1257,7 +1270,7 @@ function App() {
                                   size="small"
                                   sx={{
                                     bgcolor: `${mod.color}15`,
-                                    color: mod.color,
+                                    color: readableAccent(mod.color),
                                     fontWeight: 700,
                                     fontSize: '0.65rem',
                                     height: 18,
@@ -1274,7 +1287,17 @@ function App() {
                           <Box sx={{ px: 2.8, pb: 2 }}>
                             <Button
                               endIcon={<ArrowForwardIcon fontSize="small" />}
-                              sx={{ color: mod.color, fontWeight: 700, px: 0 }}
+                              sx={{
+                                color: readableAccent(mod.color),
+                                fontWeight: 700,
+                                px: 0,
+                                '@media (prefers-reduced-motion: no-preference)': {
+                                  '& .MuiButton-endIcon': { transition: 'transform 180ms ease-out' },
+                                  '&:hover .MuiButton-endIcon, &:focus-visible .MuiButton-endIcon': {
+                                    transform: 'translateX(4px)',
+                                  },
+                                },
+                              }}
                             >
                               Open Module
                             </Button>
@@ -1444,7 +1467,7 @@ function App() {
                       <Typography
                         variant="caption"
                         color="text.secondary"
-                        sx={{ mt: 1, display: 'block', minHeight: '2.8em', lineHeight: 1.4 }}
+                        sx={{ mt: 1, display: 'block', lineHeight: 1.4 }}
                       >
                         📍 Selected District: <strong>{selectedDistrict}</strong> (
                         {stations.find((s) => s.district === selectedDistrict)?.corridor ||
@@ -1549,6 +1572,8 @@ function App() {
                             thresholds={assessment.moe_safety?.thresholds}
                           />
                           <Alert
+                            key={assessment.moe_safety?.risk_key}
+                            className="safety-recommendation"
                             severity={
                               assessment.moe_safety?.risk_key === 'safe'
                                 ? 'success'
@@ -1557,7 +1582,7 @@ function App() {
                                 : 'error'
                             }
                             icon={getTierIcon(assessment.moe_safety?.risk_key)}
-                            sx={{ mt: 2, minHeight: { xs: 192, sm: 168 }, alignItems: 'flex-start' }}
+                            sx={{ mt: 2, alignItems: 'flex-start' }}
                           >
                             <Typography variant="body2" sx={{ fontWeight: 700 }}>
                               {assessment.moe_safety?.headline}
@@ -1568,7 +1593,7 @@ function App() {
                           </Alert>
                         </Card>
 
-                        <Card sx={{ p: { xs: 2, sm: 3 } }}>
+                        <Card sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column' }}>
                           <Tabs
                             value={checkerChartTab}
                             onChange={(_, v) => setCheckerChartTab(v)}
@@ -1776,6 +1801,7 @@ function App() {
                               return (
                                 <Card
                                   key={m.month}
+                                  className="planner-month"
                                   onClick={() => { if (!plannerPending && !plannerError) handleMonthChange(m.month); }}
                                   sx={{
                                     p: { xs: 1.2, sm: 1.5 },
@@ -1783,9 +1809,9 @@ function App() {
                                     cursor: 'pointer',
                                     border: '2px solid',
                                     borderColor: isSelected ? 'primary.main' : 'divider',
+                                    bgcolor: isSelected ? 'action.selected' : 'background.paper',
                                     position: 'relative',
                                     borderRadius: 3,
-                                    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
                                     '&:hover': { boxShadow: '0 2px 8px rgba(37, 99, 235, 0.12)' },
                                   }}
                                 >
@@ -1806,7 +1832,7 @@ function App() {
                                   </Typography>
                                   <Typography
                                     variant="h6"
-                                    sx={{ fontWeight: 900, color: chipStyle.color, my: 0.3 }}
+                                    sx={{ fontWeight: 900, color: readableAccent(chipStyle.color), my: 0.3 }}
                                   >
                                     {formatApi(m.effective_api)}
                                   </Typography>
@@ -1941,7 +1967,7 @@ function App() {
                                   <Chip label="Cleaner Option" color="success" size="small" sx={{ fontWeight: 700, ml: 'auto', flexShrink: 0 }} />
                                 )}
                               </Stack>
-                              <Typography variant="h4" sx={{ fontWeight: 900, color: comparisonData.district_a.badge_color, my: 1 }}>
+                              <Typography variant="h4" sx={{ fontWeight: 900, color: readableAccent(comparisonData.district_a.badge_color), my: 1 }}>
                                 {formatApi(comparisonData.district_a.predicted_api)} API
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
@@ -1959,7 +1985,7 @@ function App() {
                                   <Chip label="Cleaner Option" color="success" size="small" sx={{ fontWeight: 700, ml: 'auto', flexShrink: 0 }} />
                                 )}
                               </Stack>
-                              <Typography variant="h4" sx={{ fontWeight: 900, color: comparisonData.district_b.badge_color, my: 1 }}>
+                              <Typography variant="h4" sx={{ fontWeight: 900, color: readableAccent(comparisonData.district_b.badge_color), my: 1 }}>
                                 {formatApi(comparisonData.district_b.predicted_api)} API
                               </Typography>
                               <Typography variant="body2" color="text.secondary">
@@ -2247,6 +2273,7 @@ function App() {
 
         <Box
           component="footer"
+          className="no-print"
           sx={{
             py: 2.5,
             mt: 'auto',
@@ -2256,9 +2283,46 @@ function App() {
           }}
         >
           <Container maxWidth="xl">
-            <Typography variant="caption" color="text.secondary">
-              SchoolAir • Malaysian School Air Quality & Event Decision Platform • COS30049 Group 7
-            </Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '2fr 1fr 2fr' }, gap: 3 }}>
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>SchoolAir</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Air quality insights for planning outdoor school activities in Malaysia.
+                </Typography>
+                <Typography variant="caption" color="text.secondary">COS30049 · Group 7</Typography>
+              </Box>
+              <Box component="nav" aria-label="Footer navigation">
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>Explore</Typography>
+                <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'grid', gap: 0.5 }}>
+                  {navItems.map(({ label, path }) => (
+                    <li key={path}>
+                      <Typography
+                        component={RouterLink}
+                        to={path}
+                        onClick={() => window.scrollTo(0, 0)}
+                        aria-current={location.pathname === path ? 'page' : undefined}
+                        variant="body2"
+                        sx={{
+                          display: 'inline-block',
+                          color: darkMode ? '#bfdbfe' : '#1d4ed8',
+                          textDecoration: 'none',
+                          '&[aria-current="page"]': { fontWeight: 700 },
+                          '&:hover, &:focus-visible': { textDecoration: 'underline' },
+                        }}
+                      >
+                        {label}
+                      </Typography>
+                    </li>
+                  ))}
+                </Box>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 0.5 }}>About the readings</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Seasonal estimates use historical station and weather data. Use them for planning and check current conditions before an event.
+                </Typography>
+              </Box>
+            </Box>
           </Container>
         </Box>
       </Box>

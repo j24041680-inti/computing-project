@@ -1,3 +1,4 @@
+import { useTheme } from '@mui/material/styles';
 import useReducedMotion from '../../hooks/useReducedMotion';
 /**
  * SafetyGaugeD3.js
@@ -19,6 +20,8 @@ const SafetyGaugeD3 = ({
   thresholds = { safe_max: 50, caution_max: 100, indoors_max: 200 },
 }) => {
   const reducedMotion = useReducedMotion();
+  const { palette } = useTheme();
+  const dark = palette.mode === 'dark';
   const svgRef = useRef(null);
   const needleAngle = useRef(-90);
   const [hoveredZone, setHoveredZone] = useState(null);
@@ -95,7 +98,7 @@ const SafetyGaugeD3 = ({
         .attr('text-anchor', 'middle')
         .attr('font-size', '10.5px')
         .attr('font-weight', '600')
-        .attr('fill', '#64748b')
+        .attr('fill', palette.text.secondary)
         .text(val === maxScaleApi ? '250+' : Math.round(val));
     });
 
@@ -104,7 +107,7 @@ const SafetyGaugeD3 = ({
 
     g.append('path')
       .attr('d', `M -3.5 0 L 0 -${needleLen} L 3.5 0 Z`)
-      .attr('fill', '#0f172a')
+      .attr('fill', palette.text.primary)
       .attr('transform', `rotate(${reducedMotion ? targetDeg : needleAngle.current})`)
       .transition()
       .duration(reducedMotion ? 0 : 700)
@@ -121,8 +124,8 @@ const SafetyGaugeD3 = ({
       .attr('cx', 0)
       .attr('cy', 0)
       .attr('r', 8)
-      .attr('fill', '#0f172a')
-      .attr('stroke', '#ffffff')
+      .attr('fill', palette.text.primary)
+      .attr('stroke', palette.background.paper)
       .attr('stroke-width', 2);
 
     g.append('text')
@@ -131,7 +134,7 @@ const SafetyGaugeD3 = ({
       .attr('text-anchor', 'middle')
       .attr('font-size', '28px')
       .attr('font-weight', '800')
-      .attr('fill', badgeColor)
+      .attr('fill', dark ? palette.text.primary : badgeColor)
       .text(Number(predictedApi).toFixed(1));
 
     g.append('text')
@@ -140,7 +143,7 @@ const SafetyGaugeD3 = ({
       .attr('text-anchor', 'middle')
       .attr('font-size', '10px')
       .attr('font-weight', '700')
-      .attr('fill', '#94a3b8')
+      .attr('fill', palette.text.secondary)
       .attr('letter-spacing', '0.8px')
       .text('PREDICTED API');
 
@@ -151,7 +154,7 @@ const SafetyGaugeD3 = ({
       svg.on('.brush', null);
       svg.on('.zoom', null);
     };
-  }, [predictedApi, peakWindowApi, badgeColor, thresholds, reducedMotion]);
+  }, [predictedApi, peakWindowApi, badgeColor, thresholds, reducedMotion, palette, dark]);
 
   return (
     <Box sx={{ textAlign: 'center', py: 0.5 }}>
@@ -166,7 +169,7 @@ const SafetyGaugeD3 = ({
           <Chip
             size="small"
             label={`${hoveredZone.name}: ${hoveredZone.min}–${hoveredZone.max} API`}
-            sx={{ fontWeight: 600, bgcolor: '#f1f5f9' }}
+            sx={{ fontWeight: 600, bgcolor: dark ? '#243858' : '#f1f5f9', color: 'text.primary' }}
           />
         ) : (
           <Typography variant="caption" color="text.secondary">

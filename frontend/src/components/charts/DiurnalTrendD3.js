@@ -1,3 +1,4 @@
+import { useTheme } from '@mui/material/styles';
 import { revealLine } from '../../utils/chartMotion';
 import useReducedMotion from '../../hooks/useReducedMotion';
 import { formatApi } from '../../utils/formatApi';
@@ -23,6 +24,8 @@ const DiurnalTrendD3 = ({
   onSelectHour = null,
 }) => {
   const reducedMotion = useReducedMotion();
+  const { palette } = useTheme();
+  const dark = palette.mode === 'dark';
   const svgRef = useRef(null);
   const [overlayMetric, setOverlayMetric] = useState('both_regimes');
   const [hoveredPoint, setHoveredPoint] = useState(null);
@@ -89,9 +92,9 @@ const DiurnalTrendD3 = ({
 
     // Y Axis
     g.append('g').call(d3.axisLeft(yScale).ticks(5).tickSize(-innerW).tickFormat(''))
-      .selectAll('line').attr('stroke', '#e2e8f0').attr('stroke-dasharray', '2,3');
+      .selectAll('line').attr('stroke', (dark ? '#475569' : '#e2e8f0')).attr('stroke-dasharray', '2,3');
     g.append('g').call(d3.axisLeft(yScale).ticks(5).tickFormat(formatApi)).select('.domain').remove();
-    g.selectAll('.tick text').attr('font-size', '10.5px').attr('fill', '#64748b');
+    g.selectAll('.tick text').attr('font-size', '10.5px').attr('fill', palette.text.secondary);
 
     // Event Window Highlight
     const endHour = Math.min(23, selectedStartHour + durationHours - 1);
@@ -100,7 +103,7 @@ const DiurnalTrendD3 = ({
     g.append('rect')
       .attr('x', Math.max(0, winX1 - 8)).attr('y', 0)
       .attr('width', Math.max(18, winX2 - winX1 + 16)).attr('height', innerH)
-      .attr('fill', '#eff6ff').attr('opacity', 0.7).attr('rx', 6);
+      .attr('fill', (dark ? '#243858' : '#eff6ff')).attr('opacity', 0.7).attr('rx', 6);
 
     // Area
     const areaGen = d3.area()
@@ -123,7 +126,7 @@ const DiurnalTrendD3 = ({
       .x((d) => xScale(d.hour)).y((d) => yScale(d.predicted_api))
       .curve(d3.curveMonotoneX);
     g.append('path').datum(diurnalSeries).attr('fill', 'none')
-      .attr('stroke', '#2563eb').attr('stroke-width', 2.8).attr('d', mainLine).call(revealLine, reducedMotion);
+      .attr('stroke', palette.primary.main).attr('stroke-width', 2.8).attr('d', mainLine).call(revealLine, reducedMotion);
 
     // Peak Marker
     const peakPoint = d3.max(diurnalSeries, (d) => d.predicted_api);
@@ -138,8 +141,8 @@ const DiurnalTrendD3 = ({
     g.selectAll('.dot').data(diurnalSeries).enter().append('circle')
       .attr('cx', (d) => xScale(d.hour)).attr('cy', (d) => yScale(d.predicted_api))
       .attr('r', (d) => d.hour === safestDaytimeHour || d.hour === selectedStartHour || d.hour === peakHour ? 5.5 : 3)
-      .attr('fill', (d) => d.hour === safestDaytimeHour ? '#16a34a' : d.hour === peakHour ? '#dc2626' : d.hour === selectedStartHour ? '#2563eb' : '#ffffff')
-      .attr('stroke', (d) => d.hour === safestDaytimeHour ? '#15803d' : d.hour === peakHour ? '#b91c1c' : '#2563eb')
+      .attr('fill', (d) => d.hour === safestDaytimeHour ? '#16a34a' : d.hour === peakHour ? '#dc2626' : d.hour === selectedStartHour ? palette.primary.main : '#ffffff')
+      .attr('stroke', (d) => d.hour === safestDaytimeHour ? '#15803d' : d.hour === peakHour ? '#b91c1c' : palette.primary.main)
       .attr('stroke-width', 1.8).style('cursor', 'pointer')
       .on('mouseenter', function (event, d) { d3.select(this).attr('r', 7); setHoveredPoint(d); })
       .on('mouseleave', function (event, d) { d3.select(this).attr('r', 5); setHoveredPoint(null); })
@@ -148,14 +151,14 @@ const DiurnalTrendD3 = ({
     // X Axis
     const xAxis = g.append('g').attr('transform', `translate(0, ${innerH})`)
       .call(d3.axisBottom(xScale).tickValues([0, 3, 6, 9, 12, 15, 18, 21, 23]).tickFormat((h) => `${String(h).padStart(2, '0')}:00`));
-    xAxis.select('.domain').attr('stroke', '#cbd5e1');
-    xAxis.selectAll('text').attr('font-size', '10.5px').attr('fill', '#64748b');
+    xAxis.select('.domain').attr('stroke', palette.text.secondary);
+    xAxis.selectAll('text').attr('font-size', '10.5px').attr('fill', palette.text.secondary);
 
     return () => {
       svg.selectAll('*').interrupt();
       svg.selectAll('*').remove();
     };
-  }, [mode, diurnalSeries, selectedStartHour, durationHours, safestDaytimeHour, thresholds, overlayMetric, showBands, onSelectHour, reducedMotion]);
+  }, [mode, diurnalSeries, selectedStartHour, durationHours, safestDaytimeHour, thresholds, overlayMetric, showBands, onSelectHour, reducedMotion, palette, dark]);
 
   // ═══════════════════════════════════════════════════════════════
   // MULTI-DAY BRUSH-ZOOM MODE
@@ -178,9 +181,9 @@ const DiurnalTrendD3 = ({
     }));
 
     const width = 760;
-    const height = 380;
-    const marginFocus = { top: 28, right: 28, bottom: 90, left: 56 };
-    const marginContext = { top: 290, right: 28, bottom: 26, left: 56 };
+    const height = 408;
+    const marginFocus = { top: 28, right: 28, bottom: 118, left: 56 };
+    const marginContext = { top: 318, right: 28, bottom: 26, left: 56 };
 
     const innerW = width - marginFocus.left - marginFocus.right;
     const focusH = height - marginFocus.top - marginFocus.bottom;
@@ -246,22 +249,22 @@ const DiurnalTrendD3 = ({
     }
 
     focus.append('g').call(d3.axisLeft(yFocus).ticks(5).tickSize(-innerW).tickFormat(''))
-      .selectAll('line').attr('stroke', '#e2e8f0').attr('stroke-dasharray', '2,3');
+      .selectAll('line').attr('stroke', (dark ? '#475569' : '#e2e8f0')).attr('stroke-dasharray', '2,3');
     focus.append('g').call(d3.axisLeft(yFocus).ticks(5).tickFormat(formatApi)).select('.domain').remove();
 
     const lineActualFocus = d3.line().x((d) => xFocus(d.dt)).y((d) => yFocus(d.actual_api)).curve(d3.curveMonotoneX);
     const linePredFocus = d3.line().x((d) => xFocus(d.dt)).y((d) => yFocus(d.pred_api)).curve(d3.curveMonotoneX);
     const chartBody = focus.append('g').attr('clip-path', 'url(#focus-clip)');
 
-    const pathActual = chartBody.append('path').datum(parsedData).attr('fill', 'none').attr('stroke', '#0f172a').attr('stroke-width', 2).attr('d', lineActualFocus);
-    const pathPred = chartBody.append('path').datum(parsedData).attr('fill', 'none').attr('stroke', '#2563eb').attr('stroke-width', 2.3).attr('stroke-dasharray', '6,3').attr('d', linePredFocus);
+    const pathActual = chartBody.append('path').datum(parsedData).attr('fill', 'none').attr('stroke', palette.text.primary).attr('stroke-width', 2).attr('d', lineActualFocus);
+    const pathPred = chartBody.append('path').datum(parsedData).attr('fill', 'none').attr('stroke', palette.primary.main).attr('stroke-width', 2.3).attr('stroke-dasharray', '6,3').attr('d', linePredFocus);
 
     const xAxisFocusG = focus.append('g').attr('transform', `translate(0, ${focusH})`).call(d3.axisBottom(xFocus).ticks(4).tickFormat(d3.timeFormat('%d/%m/%Y')));
-    xAxisFocusG.selectAll('text').attr('font-size', '10px').attr('fill', '#64748b');
+    xAxisFocusG.selectAll('text').attr('font-size', '10px').attr('fill', palette.text.secondary);
 
     // Context Mini Chart
     const areaContext = d3.area().x((d) => xContext(d.dt)).y0(contextH).y1((d) => yContext(d.pred_api)).curve(d3.curveMonotoneX);
-    context.append('path').datum(parsedData).attr('fill', '#dbeafe').attr('stroke', '#2563eb').attr('stroke-width', 1.2).attr('d', areaContext);
+    context.append('path').datum(parsedData).attr('fill', (dark ? '#243858' : '#eff6ff')).attr('stroke', palette.primary.main).attr('stroke-width', 1.2).attr('d', areaContext);
     context.append('g').attr('transform', `translate(0, ${contextH})`).call(d3.axisBottom(xContext).ticks(4).tickFormat(d3.timeFormat('%d/%m/%Y')));
 
     // Brush with Click-Through Fix
@@ -304,15 +307,15 @@ const DiurnalTrendD3 = ({
       svg.selectAll('*').interrupt();
       svg.selectAll('*').remove();
     };
-  }, [mode, multidaySeries, thresholds, showBands, reducedMotion]);
+  }, [mode, multidaySeries, thresholds, showBands, reducedMotion, palette, dark]);
 
   return (
-    <Box>
+    <Box sx={mode === 'diurnal24h' ? { flex: '1 0 auto', display: 'flex', flexDirection: 'column' } : undefined}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
         {mode === 'diurnal24h' ? (
           <>
             <Typography variant="caption" color="text.secondary">
-              Click any dot to change start hour • <strong style={{ color: '#16a34a' }}>Green</strong> = Cleanest • <strong style={{ color: '#dc2626' }}>Red</strong> = Peak
+              Click any dot to change start hour • <strong style={{ color: (dark ? '#86efac' : '#16a34a') }}>Green</strong> = Cleanest • <strong style={{ color: (dark ? '#fca5a5' : '#dc2626') }}>Red</strong> = Peak
             </Typography>
             <Stack direction="row" spacing={1}>
               <ToggleButtonGroup size="small" value={overlayMetric} exclusive onChange={(_, v) => v && setOverlayMetric(v)}
@@ -338,14 +341,16 @@ const DiurnalTrendD3 = ({
               </Typography>
             </Box>
             <Stack direction="row" spacing={1.5} alignItems="center">
-              <Typography variant="caption" sx={{ fontWeight: 700, color: '#0f172a' }}>● Actual API (DOE Sensor)</Typography>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: '#2563eb' }}>--- XGBoost 24h Forecast</Typography>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: palette.text.primary }}>● Actual API (DOE Sensor)</Typography>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: palette.primary.main }}>--- XGBoost 24h Forecast</Typography>
             </Stack>
           </>
         )}
       </Box>
 
-      <svg ref={svgRef} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="D3 Chart" />
+      <Box sx={mode === 'diurnal24h' ? { flex: '1 0 auto', display: 'flex', alignItems: 'center' } : undefined}>
+        <svg ref={svgRef} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="D3 Chart" />
+      </Box>
 
       <Box sx={{ minHeight: 28, mt: 1 }}>
         {mode === 'diurnal24h' && hoveredPoint && (
@@ -354,7 +359,7 @@ const DiurnalTrendD3 = ({
         )}
         {mode === 'multidayBrush' && brushStats && (
           <Chip size="small" label={`Zoomed: ${brushStats.start} – ${brushStats.end} (${brushStats.hours}h) • Peak: ${brushStats.peakActual} API • Avg: ${brushStats.avgActual} API`}
-            sx={{ fontWeight: 600, bgcolor: '#f1f5f9' }} />
+            sx={{ fontWeight: 600, bgcolor: dark ? '#243858' : '#f1f5f9', color: 'text.primary' }} />
         )}
       </Box>
     </Box>

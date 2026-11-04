@@ -96,6 +96,19 @@ svg .brush .selection:active {
   transform: scale(0.98);
 }
 
+.MuiCard-root.planner-month {
+  transition: background-color 180ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out !important;
+}
+
+.safety-recommendation .MuiAlert-icon {
+  animation: recommendation-settle 220ms ease-out;
+}
+
+@keyframes recommendation-settle {
+  from { transform: translateY(3px); }
+  to { transform: translateY(0); }
+}
+
 @media print {
   .no-print {
     display: none !important;

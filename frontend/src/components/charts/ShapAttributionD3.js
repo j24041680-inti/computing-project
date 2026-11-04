@@ -63,7 +63,7 @@ const ShapAttributionD3 = ({ attributions = [] }) => {
         .attr('width', innerW)
         .attr('height', yScale.bandwidth())
         .attr('rx', 6)
-        .attr('fill', '#f1f5f9');
+        .attr('fill', 'var(--chart-highlight, #f1f5f9)');
 
       g.selectAll('.bar')
         .data(data)
@@ -96,7 +96,7 @@ const ShapAttributionD3 = ({ attributions = [] }) => {
         .attr('y', (d) => yScale(d.feature) + yScale.bandwidth() / 2 + 4)
         .attr('font-size', '11.5px')
         .attr('font-weight', '700')
-        .attr('fill', '#334155')
+        .attr('fill', 'var(--chart-ink, #334155)')
         .text((d) => `${d.percentage.toFixed(1)}%`);
     } else {
       const maxAbs = Math.max(d3.max(data, (d) => Math.abs(d.shap_value)) || 5, 2);
@@ -144,13 +144,13 @@ const ShapAttributionD3 = ({ attributions = [] }) => {
         .attr('text-anchor', (d) => (d.shap_value >= 0 ? 'start' : 'end'))
         .attr('font-size', '11px')
         .attr('font-weight', '700')
-        .attr('fill', '#334155')
+        .attr('fill', 'var(--chart-ink, #334155)')
         .text((d) => `${d.shap_value >= 0 ? '+' : ''}${d.shap_value.toFixed(1)}`);
     }
 
     const yAxis = g.append('g').call(d3.axisLeft(yScale).tickSize(0));
     yAxis.select('.domain').remove();
-    yAxis.selectAll('text').attr('font-size', '11.5px').attr('font-weight', '600').attr('fill', '#334155');
+    yAxis.selectAll('text').attr('font-size', '11.5px').attr('font-weight', '600').attr('fill', 'var(--chart-ink, #334155)');
 
     // ✅ CLEANUP
     return () => {
