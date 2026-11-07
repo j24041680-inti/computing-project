@@ -1,4 +1,5 @@
 import { formatApi } from '../../utils/formatApi';
+import useReducedMotion from '../../hooks/useReducedMotion';
 /**
  * SeasonalHeatmapD3.js
  * ============================================================================
@@ -24,9 +25,16 @@ const SeasonalHeatmapD3 = ({
   onSelectStationMonth = null,
 }) => {
   const svgRef = useRef(null);
+  const lastDrawnView = useRef(null);
+  const selectStationMonth = useRef(onSelectStationMonth);
+  const reducedMotion = useReducedMotion();
   const [metricField, setMetricField] = useState('planning_risk_index');
   const [stationScope, setStationScope] = useState('selected');
   const [hoveredCell, setHoveredCell] = useState(null);
+
+  useLayoutEffect(() => {
+    selectStationMonth.current = onSelectStationMonth;
+  }, [onSelectStationMonth]);
 
   // Sync stationScope when "All Stations" is explicitly chosen in the parent dropdown
   useLayoutEffect(() => {
@@ -109,7 +117,7 @@ const SeasonalHeatmapD3 = ({
           .attr('stroke-width', isSelected ? 2 : 0);
         setHoveredCell(null);
       })
-      .on('click', (_, d) => onSelectStationMonth && onSelectStationMonth(d.district, d.month));
+      .on('click', (_, d) => selectStationMonth.current?.(d.district, d.month));
 
     cellGroups
       .append('rect')
@@ -138,6 +146,20 @@ const SeasonalHeatmapD3 = ({
       .attr('fill', (d) => getTextColor(d[metricField]))
       .text((d) => formatApi(d[metricField]));
 
+    const scope = isSpecificSelected ? stationScope : 'all';
+    const view = JSON.stringify([corridorName, selectedDistrict, scope, metricField]);
+    const previousView = lastDrawnView.current;
+    // Fade the tile backgrounds from left to right while keeping values visible.
+    if (view !== previousView && !reducedMotion) {
+      cellGroups.select('rect').attr('opacity', 0)
+        .transition().duration(300)
+        .delay((d) => MONTH_SHORT.indexOf(d.month_short) * 18)
+        .attr('opacity', 1);
+    }
+    const firstFrame = requestAnimationFrame(() => {
+      lastDrawnView.current = view;
+    });
+
     const xAxis = g.append('g').call(d3.axisTop(xScale).tickSize(0));
     xAxis.select('.domain').remove();
     xAxis.selectAll('text').attr('font-size', '10.5px').attr('font-weight', '700').attr('fill', 'var(--chart-ink, #334155)');
@@ -157,12 +179,13 @@ const SeasonalHeatmapD3 = ({
       );
 
     return () => {
+      cancelAnimationFrame(firstFrame);
       svg.selectAll('*').interrupt();
       svg.selectAll('*').remove();
       svg.on('.brush', null);
       svg.on('.zoom', null);
     };
-  }, [seasonalCells, metricField, stationScope, selectedDistrict, onSelectStationMonth]);
+  }, [seasonalCells, metricField, stationScope, selectedDistrict, corridorName, reducedMotion]);
 
   const hasSpecificStation = Boolean(selectedDistrict && selectedDistrict !== 'All Stations');
 
