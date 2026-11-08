@@ -234,3 +234,21 @@ svg .brush .selection:active {
 @media (prefers-reduced-motion: reduce) {
   .reading-update { animation: none !important; }
 }
+
+.chart-target:hover > rect,
+.chart-target:focus-visible > rect,
+.chart-target:hover > circle:first-child,
+.chart-target:focus-visible > circle:first-child {
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.heatmap-tile-inspected {
+  opacity: 0.68;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .chart-target:has(> rect) {
+    transition: opacity 150ms ease-out;
+  }
+}

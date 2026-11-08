@@ -1,3 +1,6 @@
+import ChartPointReadout from './ChartPointReadout';
+import { getContrastRatio, useTheme } from '@mui/material/styles';
+import { bindChartTargets } from '../../utils/chartInteraction';
 import { formatApi } from '../../utils/formatApi';
 import useReducedMotion from '../../hooks/useReducedMotion';
 /**
@@ -14,9 +17,32 @@ import useReducedMotion from '../../hooks/useReducedMotion';
 
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { Box, ToggleButton, ToggleButtonGroup, Chip, Typography, Stack } from '@mui/material';
+import { Box, ToggleButton, ToggleButtonGroup, Typography, Stack } from '@mui/material';
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const METRICS = {
+  planning_risk_index: 'Risk Index',
+  pred_mean_api: 'Typical API',
+  mean_temp: 'Temperature',
+};
+const API_BANDS = [
+  { max: 50, label: '≤ 50', light: '#dcfce7', dark: '#14532d', ink: '#166534' },
+  { max: 80, label: '> 50–80', light: '#fef9c3', dark: '#504018', ink: '#854d0e' },
+  { max: 100, label: '> 80–100', light: '#fde047', dark: '#614814', ink: '#854d0e' },
+  { max: 160, label: '> 100–160', light: '#fdba74', dark: '#78350f', ink: '#9a3412' },
+  { max: Infinity, label: '> 160', light: '#fca5a5', dark: '#7f1d1d', ink: '#991b1b' },
+];
+
+const describeCell = (cell, metric) =>
+  `${cell.district} · ${cell.month_short} · ${METRICS[metric]} ${formatApi(cell[metric])}${
+    metric === 'mean_temp' ? '°C' : metric === 'pred_mean_api' ? ' API' : ''
+  }`;
+
+const temperatureColor = (value, dark) => {
+  const color = d3.interpolateYlOrRd((value - 24) / 10);
+  return dark ? d3.interpolateRgb('#121b2c', color)(0.38) : color;
+};
 
 const SeasonalHeatmapD3 = ({
   seasonalCells = [],
@@ -25,12 +51,14 @@ const SeasonalHeatmapD3 = ({
   onSelectStationMonth = null,
 }) => {
   const svgRef = useRef(null);
+  const { palette } = useTheme();
+  const dark = palette.mode === 'dark';
   const lastDrawnView = useRef(null);
   const selectStationMonth = useRef(onSelectStationMonth);
   const reducedMotion = useReducedMotion();
   const [metricField, setMetricField] = useState('planning_risk_index');
-  const [stationScope, setStationScope] = useState('selected');
-  const [hoveredCell, setHoveredCell] = useState(null);
+  const [stationScope, setStationScope] = useState('all');
+  const [inspectedTile, setInspectedTile] = useState(null);
 
   useLayoutEffect(() => {
     selectStationMonth.current = onSelectStationMonth;
@@ -47,6 +75,7 @@ const SeasonalHeatmapD3 = ({
     const svgEl = svgRef.current;
     if (!svgEl || !seasonalCells || seasonalCells.length === 0) return;
 
+    setInspectedTile(null);
     const svg = d3.select(svgEl);
     svg.selectAll('*').interrupt();
     svg.selectAll('*').remove();
@@ -82,42 +111,33 @@ const SeasonalHeatmapD3 = ({
     const xScale = d3.scaleBand().domain(MONTH_SHORT).range([0, innerW]).padding(0.08);
     const yScale = d3.scaleBand().domain(districts).range([0, innerH]).padding(0.12);
 
-    const getColor = (val) => {
-      if (metricField === 'mean_temp') return d3.interpolateYlOrRd((val - 24) / 10);
-      if (val <= 50) return '#dcfce7';
-      if (val <= 80) return '#fef9c3';
-      if (val <= 100) return '#fde047';
-      if (val <= 160) return '#fdba74';
-      return '#fca5a5';
-    };
+    const cellGroups = g.selectAll('.chart-target').data(displayedCells).join('g')
+      .style('cursor', 'pointer');
 
-    const getTextColor = (val) => {
-      if (metricField === 'mean_temp') return val > 30 ? '#ffffff' : '#0f172a';
-      if (val <= 50) return '#166534';
-      if (val <= 100) return '#854d0e';
-      if (val <= 160) return '#9a3412';
-      return '#991b1b';
-    };
+    const tileByCell = new Map(cellGroups.nodes().map((tile) => [d3.select(tile).datum(), tile]));
+    let activeTile = null;
+    bindChartTargets(cellGroups, {
+      describe: (cell) => `${describeCell(cell, metricField)}. Open Safety Checker`,
+      inspect: (cell) => {
+        const tile = tileByCell.get(cell);
+        if (tile === activeTile) return;
 
-    const cellGroups = g
-      .selectAll('.cell-g')
-      .data(displayedCells)
-      .enter()
-      .append('g')
-      .style('cursor', 'pointer')
-      .on('mouseenter', function (event, d) {
-        d3.select(this).select('rect').attr('stroke', '#0f172a').attr('stroke-width', 2);
-        setHoveredCell(d);
-      })
-      .on('mouseleave', function (event, d) {
-        const isSelected = isSpecificSelected && d.district?.toLowerCase() === selectedDistrict.toLowerCase();
-        d3.select(this)
-          .select('rect')
-          .attr('stroke', isSelected ? 'var(--chart-blue, #2563eb)' : 'none')
-          .attr('stroke-width', isSelected ? 2 : 0);
-        setHoveredCell(null);
-      })
-      .on('click', (_, d) => selectStationMonth.current?.(d.district, d.month));
+        activeTile?.classList.remove('heatmap-tile-inspected');
+        activeTile = tile;
+        if (tile) {
+          tile.classList.add('heatmap-tile-inspected');
+          const anchor = {
+            getBoundingClientRect: () => tile.getBoundingClientRect(),
+            contextElement: svgEl,
+          };
+          setInspectedTile({ cell, anchor, open: true });
+        } else {
+          setInspectedTile((previous) => previous && { ...previous, open: false });
+        }
+      },
+      activate: (cell) => selectStationMonth.current?.(cell.district, cell.month),
+      columns: MONTH_SHORT.length,
+    });
 
     cellGroups
       .append('rect')
@@ -126,10 +146,14 @@ const SeasonalHeatmapD3 = ({
       .attr('width', xScale.bandwidth())
       .attr('height', yScale.bandwidth())
       .attr('rx', 4)
-      .attr('fill', (d) => getColor(d[metricField]))
+      .attr('fill', (d) => {
+        const value = d[metricField];
+        if (metricField === 'mean_temp') return temperatureColor(value, dark);
+        return (API_BANDS.find(({ max }) => value <= max) || API_BANDS[4])[dark ? 'dark' : 'light'];
+      })
       .attr('stroke', (d) =>
         isSpecificSelected && d.district?.toLowerCase() === selectedDistrict.toLowerCase()
-          ? 'var(--chart-blue, #2563eb)'
+          ? palette.primary.main
           : 'none'
       )
       .attr('stroke-width', (d) =>
@@ -143,7 +167,14 @@ const SeasonalHeatmapD3 = ({
       .attr('text-anchor', 'middle')
       .attr('font-size', isSingleStation ? '11px' : '9.5px')
       .attr('font-weight', '700')
-      .attr('fill', (d) => getTextColor(d[metricField]))
+      .attr('fill', (d) => {
+        if (dark) return '#f8fafc';
+        if (metricField === 'mean_temp') {
+          const fill = temperatureColor(d[metricField], false);
+          return getContrastRatio(fill, '#000000') >= 4.5 ? '#000000' : '#ffffff';
+        }
+        return (API_BANDS.find(({ max }) => d[metricField] <= max) || API_BANDS[4]).ink;
+      })
       .text((d) => formatApi(d[metricField]));
 
     const scope = isSpecificSelected ? stationScope : 'all';
@@ -162,7 +193,7 @@ const SeasonalHeatmapD3 = ({
 
     const xAxis = g.append('g').call(d3.axisTop(xScale).tickSize(0));
     xAxis.select('.domain').remove();
-    xAxis.selectAll('text').attr('font-size', '10.5px').attr('font-weight', '700').attr('fill', 'var(--chart-ink, #334155)');
+    xAxis.selectAll('text').attr('font-size', '10.5px').attr('font-weight', '700').attr('fill', palette.text.primary);
 
     const yAxis = g.append('g').call(d3.axisLeft(yScale).tickSize(0));
     yAxis.select('.domain').remove();
@@ -172,7 +203,7 @@ const SeasonalHeatmapD3 = ({
         isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? '800' : '600'
       )
       .attr('fill', (d) =>
-        isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? 'var(--chart-blue, #1d4ed8)' : 'var(--chart-label, #475569)'
+        isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? palette.primary.main : palette.text.secondary
       )
       .text((d) =>
         isSpecificSelected && d.toLowerCase() === selectedDistrict.toLowerCase() ? `▶ ${d}` : d
@@ -185,7 +216,7 @@ const SeasonalHeatmapD3 = ({
       svg.on('.brush', null);
       svg.on('.zoom', null);
     };
-  }, [seasonalCells, metricField, stationScope, selectedDistrict, corridorName, reducedMotion]);
+  }, [seasonalCells, metricField, stationScope, selectedDistrict, corridorName, reducedMotion, dark, palette]);
 
   const hasSpecificStation = Boolean(selectedDistrict && selectedDistrict !== 'All Stations');
 
@@ -205,10 +236,10 @@ const SeasonalHeatmapD3 = ({
               onChange={(_, val) => val && setStationScope(val)}
               sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1.25, fontSize: '0.72rem', textTransform: 'none' } }}
             >
-              <ToggleButton value="selected">Focus: {selectedDistrict}</ToggleButton>
               <ToggleButton value="all">
                 All Stations in {corridorName !== 'All Corridors' ? corridorName.replace(' Corridor', '') : 'Malaysia'}
               </ToggleButton>
+              <ToggleButton value="selected">Focus: {selectedDistrict}</ToggleButton>
             </ToggleButtonGroup>
           )}
         </Stack>
@@ -226,33 +257,55 @@ const SeasonalHeatmapD3 = ({
         </ToggleButtonGroup>
       </Box>
 
-      <svg
-        ref={svgRef}
-        style={{ width: '100%', height: 'auto', display: 'block' }}
-        role="img"
-        aria-label="D3 Seasonal Heatmap"
-      />
+      <Box
+        role="group"
+        aria-label="Heatmap color key"
+        sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.25 }}
+      >
+        <Typography variant="caption" sx={{ fontWeight: 700 }}>{METRICS[metricField]}</Typography>
+        {metricField === 'mean_temp' ? (
+          <>
+            <Typography variant="caption">24°C or lower</Typography>
+            <Box aria-hidden="true" sx={{
+              width: 100, height: 10, borderRadius: 1, border: '1px solid', borderColor: 'divider',
+              background: `linear-gradient(to right, ${[24, 26, 28, 30, 32, 34].map((temp) => temperatureColor(temp, dark)).join(', ')})`,
+            }} />
+            <Typography variant="caption">34°C or higher</Typography>
+          </>
+        ) : API_BANDS.map((band) => (
+          <Box key={band.label} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+            <Box aria-hidden="true" sx={{ width: 12, height: 12, borderRadius: 0.5, bgcolor: dark ? band.dark : band.light, border: '1px solid', borderColor: 'divider' }} />
+            <Typography variant="caption">{band.label}</Typography>
+          </Box>
+        ))}
+      </Box>
 
-      <Box sx={{ minHeight: 26, mt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+      <Box sx={{ overflowX: 'auto' }}>
+        <svg
+          ref={svgRef}
+          style={{ width: '100%', minWidth: 600, height: 'auto', display: 'block' }}
+          role="group"
+          aria-label="Seasonal heatmap. Use arrow keys to explore months and stations."
+        />
+      </Box>
+
+      <Box sx={{ mt: 1 }}>
         <Typography variant="caption" color="text.secondary">
           {stationScope === 'all' && hasSpecificStation ? (
             <span>
-              Highlighted: <strong style={{ color: 'var(--chart-blue, #1d4ed8)' }}>▶ {selectedDistrict}</strong> (selected station)
+              Highlighted: <strong style={{ color: palette.primary.main }}>▶ {selectedDistrict}</strong>.{' '}
             </span>
-          ) : (
-            'Click any station-month cell to inspect in Safety Checker'
-          )}
+          ) : null}
+          Focus or hover over a cell for details. Click, press Enter, or tap twice to open Safety Checker.
         </Typography>
-        <Box sx={{ ml: 'auto' }}>
-          {hoveredCell && (
-            <Chip
-              size="small"
-              label={`${hoveredCell.district} (${hoveredCell.month_short}): ${formatApi(hoveredCell.planning_risk_index)} Risk • ${hoveredCell.mean_temp}°C (Click to inspect)`}
-              sx={{ fontWeight: 600, bgcolor: '#eff6ff', color: '#1d4ed8' }}
-            />
-          )}
-        </Box>
       </Box>
+      <ChartPointReadout
+        anchor={inspectedTile?.anchor}
+        open={inspectedTile?.open}
+        reducedMotion={reducedMotion}
+      >
+        {inspectedTile && describeCell(inspectedTile.cell, metricField)}
+      </ChartPointReadout>
     </Box>
   );
 };

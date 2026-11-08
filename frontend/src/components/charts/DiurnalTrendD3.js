@@ -1,3 +1,5 @@
+import ChartPointReadout from './ChartPointReadout';
+import { bindChartTargets } from '../../utils/chartInteraction';
 import { useTheme } from '@mui/material/styles';
 import { revealLine } from '../../utils/chartMotion';
 import useReducedMotion from '../../hooks/useReducedMotion';
@@ -7,7 +9,7 @@ import { formatApi } from '../../utils/formatApi';
  * Unit: COS30049 Group 7
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import {
   Box, Typography, ToggleButton, ToggleButtonGroup, Chip, Stack,
@@ -26,11 +28,23 @@ const DiurnalTrendD3 = ({
   const reducedMotion = useReducedMotion();
   const { palette } = useTheme();
   const dark = palette.mode === 'dark';
+  const hazeColor = dark ? '#fdba74' : '#c2410c';
+  const tempColor = dark ? '#fcd34d' : '#92400e';
+  const cleanestColor = dark ? '#86efac' : '#15803d';
+  const peakColor = dark ? '#fca5a5' : '#b91c1c';
   const svgRef = useRef(null);
+  const focusedHour = useRef(null);
   const [overlayMetric, setOverlayMetric] = useState('both_regimes');
-  const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [inspectedPoint, setInspectedPoint] = useState(null);
   const [brushStats, setBrushStats] = useState(null);
   const [showBands, setShowBands] = useState(true);
+
+  const describePoint = useCallback((point) => {
+    const overlay = overlayMetric === 'both_regimes'
+      ? ` · Peak haze ${formatApi(point.peak_haze_api)} API`
+      : '';
+    return `${point.time_label} · ${formatApi(point.predicted_api)} API · ${formatApi(point.temperature)}°C${overlay}`;
+  }, [overlayMetric]);
 
   // ═══════════════════════════════════════════════════════════════
   // DIURNAL 24-HOUR MODE
@@ -40,6 +54,7 @@ const DiurnalTrendD3 = ({
     const svgEl = svgRef.current;
     if (!svgEl || !diurnalSeries || diurnalSeries.length === 0) return;
 
+    setInspectedPoint(null);
     const svg = d3.select(svgEl);
     svg.selectAll('*').interrupt();
     svg.selectAll('*').remove();
@@ -52,6 +67,20 @@ const DiurnalTrendD3 = ({
 
     svg.attr('viewBox', `0 0 ${width} ${height}`);
     const g = svg.append('g').attr('transform', `translate(${margin.left}, ${margin.top})`);
+
+    const showReadout = (label, dot) => {
+      setInspectedPoint({
+        label,
+        open: true,
+        anchor: {
+          getBoundingClientRect: () => dot.getBoundingClientRect(),
+          contextElement: svgEl,
+        },
+      });
+    };
+    const hideReadout = () => {
+      setInspectedPoint((previous) => previous && { ...previous, open: false });
+    };
 
     const xScale = d3.scaleLinear().domain([0, 23]).range([0, innerW]);
 
@@ -117,10 +146,11 @@ const DiurnalTrendD3 = ({
         .x((d) => xScale(d.hour)).y((d) => yScale(d.peak_haze_api || 0))
         .curve(d3.curveMonotoneX);
       g.append('path').datum(diurnalSeries).attr('fill', 'none')
-        .attr('stroke', '#f97316').attr('stroke-width', 1.8)
+        .attr('stroke', hazeColor).attr('stroke-width', 1.8)
         .attr('stroke-dasharray', '5,4').attr('opacity', 0.75).attr('d', peakLine);
     }
 
+    let hottestMarker;
     if (overlayMetric === 'temperature') {
       const hasTemperature = (d) => d.temperature != null && Number.isFinite(d.temperature);
       const [minTemp, maxTemp] = d3.extent(diurnalSeries.filter(hasTemperature), (d) => d.temperature);
@@ -129,7 +159,6 @@ const DiurnalTrendD3 = ({
         const padding = Math.max(2, (maxTemp - minTemp) * 0.1);
         const tempScale = d3.scaleLinear()
           .domain([minTemp - padding, maxTemp + padding]).nice().range([innerH, 0]);
-        const tempColor = dark ? '#fcd34d' : '#92400e';
         const tempLine = d3.line().defined(hasTemperature)
           .x((d) => xScale(d.hour)).y((d) => tempScale(d.temperature))
           .curve(d3.curveMonotoneX);
@@ -143,6 +172,19 @@ const DiurnalTrendD3 = ({
         tempAxis.selectAll('text').attr('font-size', '10.5px');
         tempAxis.append('text').attr('x', 8).attr('y', -9)
           .attr('fill', tempColor).attr('text-anchor', 'start').text('°C');
+
+        const hottest = diurnalSeries.find((d) => d.temperature === maxTemp);
+        const label = `Highest temperature · ${hottest.time_label} · ${formatApi(maxTemp)}°C`;
+        hottestMarker = g.append('circle')
+          .attr('cx', xScale(hottest.hour)).attr('cy', tempScale(maxTemp))
+          .attr('r', 6).attr('fill', tempColor)
+          .attr('stroke', palette.background.paper).attr('stroke-width', 2)
+          .attr('role', 'img').attr('aria-label', label).attr('tabindex', 0)
+          .on('pointerenter focus click', function () { showReadout(label, this); })
+          .on('pointerleave', function () {
+            if (svgEl.ownerDocument.activeElement !== this) hideReadout();
+          })
+          .on('blur', hideReadout);
       }
     }
 
@@ -159,19 +201,35 @@ const DiurnalTrendD3 = ({
     g.append('line')
       .attr('x1', xScale(peakHour)).attr('x2', xScale(peakHour))
       .attr('y1', 0).attr('y2', innerH)
-      .attr('stroke', '#dc2626').attr('stroke-width', 1.2)
+      .attr('stroke', peakColor).attr('stroke-width', 1.2)
       .attr('stroke-dasharray', '3,3').attr('opacity', 0.5);
 
-    // Dots
-    g.selectAll('.dot').data(diurnalSeries).enter().append('circle')
-      .attr('cx', (d) => xScale(d.hour)).attr('cy', (d) => yScale(d.predicted_api))
+    // A transparent target around each dot makes the curve easier to tap.
+    const points = g.selectAll('.chart-target').data(diurnalSeries).join('g')
+      .attr('transform', (d) => `translate(${xScale(d.hour)}, ${yScale(d.predicted_api)})`)
+      .style('cursor', 'pointer');
+
+    points.append('circle').attr('r', 12).attr('fill', 'transparent');
+    points.append('circle')
       .attr('r', (d) => d.hour === safestDaytimeHour || d.hour === selectedStartHour || d.hour === peakHour ? 5.5 : 3)
-      .attr('fill', (d) => d.hour === safestDaytimeHour ? '#16a34a' : d.hour === peakHour ? '#dc2626' : d.hour === selectedStartHour ? palette.primary.main : '#ffffff')
-      .attr('stroke', (d) => d.hour === safestDaytimeHour ? '#15803d' : d.hour === peakHour ? '#b91c1c' : palette.primary.main)
-      .attr('stroke-width', 1.8).style('cursor', 'pointer')
-      .on('mouseenter', function (event, d) { d3.select(this).attr('r', 7); setHoveredPoint(d); })
-      .on('mouseleave', function (event, d) { d3.select(this).attr('r', 5); setHoveredPoint(null); })
-      .on('click', (_, d) => onSelectHour && onSelectHour(d.hour));
+      .attr('fill', (d) => d.hour === safestDaytimeHour ? cleanestColor : d.hour === peakHour ? peakColor : d.hour === selectedStartHour ? palette.primary.main : palette.background.paper)
+      .attr('stroke', (d) => d.hour === safestDaytimeHour || d.hour === peakHour ? palette.background.paper : palette.primary.main)
+      .attr('stroke-width', 1.8);
+
+    bindChartTargets(points, {
+      describe: (d) => `${describePoint(d)}. Set start hour`,
+      inspect: (point) => {
+        if (!point) {
+          hideReadout();
+          return;
+        }
+
+        const dot = points.filter((d) => d === point).select('circle:last-child').node();
+        showReadout(describePoint(point), dot);
+      },
+      activate: (d) => onSelectHour?.(d.hour),
+    });
+    hottestMarker?.raise();
 
     // X Axis
     const xAxis = g.append('g').attr('transform', `translate(0, ${innerH})`)
@@ -179,11 +237,20 @@ const DiurnalTrendD3 = ({
     xAxis.select('.domain').attr('stroke', palette.text.secondary);
     xAxis.selectAll('text').attr('font-size', '10.5px').attr('fill', palette.text.secondary);
 
+    if (focusedHour.current !== null) {
+      points.filter((d) => d.hour === focusedHour.current).node()?.focus();
+      focusedHour.current = null;
+    }
+
     return () => {
+      const active = svgEl.ownerDocument.activeElement;
+      focusedHour.current = points.filter(function () { return this === active; }).nodes().length
+        ? d3.select(active).datum().hour
+        : null;
       svg.selectAll('*').interrupt();
       svg.selectAll('*').remove();
     };
-  }, [mode, diurnalSeries, selectedStartHour, durationHours, safestDaytimeHour, thresholds, overlayMetric, showBands, onSelectHour, reducedMotion, palette, dark]);
+  }, [mode, diurnalSeries, selectedStartHour, durationHours, safestDaytimeHour, thresholds, overlayMetric, showBands, onSelectHour, reducedMotion, palette, dark, describePoint, hazeColor, tempColor, cleanestColor, peakColor]);
 
   // ═══════════════════════════════════════════════════════════════
   // MULTI-DAY BRUSH-ZOOM MODE
@@ -340,9 +407,9 @@ const DiurnalTrendD3 = ({
         {mode === 'diurnal24h' ? (
           <>
             <Typography variant="caption" color="text.secondary">
-              Click any dot to change start hour • <strong style={{ color: (dark ? '#86efac' : '#16a34a') }}>Green</strong> = Cleanest • <strong style={{ color: (dark ? '#fca5a5' : '#dc2626') }}>Red</strong> = Peak
+              Focus or hover over a dot to see readings. Click or press Enter to set the start hour. On touchscreens, tap twice to set it.
             </Typography>
-            <Stack direction="row" spacing={1}>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
               <ToggleButtonGroup size="small" value={overlayMetric} exclusive onChange={(_, v) => v && setOverlayMetric(v)}
                 sx={{ '& .MuiToggleButton-root': { py: 0.3, px: 1.25, fontSize: '0.72rem', textTransform: 'none' } }}>
                 <ToggleButton value="both_regimes">Haze Overlay</ToggleButton>
@@ -353,37 +420,66 @@ const DiurnalTrendD3 = ({
                 <ToggleButton value={true}>Bands</ToggleButton>
                 <ToggleButton value={false}>No Bands</ToggleButton>
               </ToggleButtonGroup>
-            </Stack>
+            </Box>
           </>
         ) : (
           <>
             <Box>
               <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary', display: 'block', fontSize: '0.82rem' }}>
-                Benchmark 7-Day Severe Haze Episode (12–18 Sept 2019)
+                Severe Haze in September 2019 (12–18 Sept)
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                <strong>Why these seven days?</strong> Smoke haze affected parts of Malaysia during this period, giving us a real example to compare the 24-hour forecast with measured air pollution.
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Drag the <strong>grab handles</strong> below to zoom into any hour • Compares actual DOE ground sensor API vs. 24h XGBoost forecast
+                Drag either end of the highlighted area below to zoom in on a shorter time period.
               </Typography>
             </Box>
             <Stack direction="row" spacing={1.5} alignItems="center">
-              <Typography variant="caption" sx={{ fontWeight: 700, color: palette.text.primary }}>● Actual API (DOE Sensor)</Typography>
-              <Typography variant="caption" sx={{ fontWeight: 700, color: palette.primary.main }}>--- XGBoost 24h Forecast</Typography>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: palette.text.primary }}>● Measured API</Typography>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: palette.primary.main }}>--- Forecast API</Typography>
             </Stack>
           </>
         )}
       </Box>
 
       {mode === 'diurnal24h' && (
-        <Box sx={{ minHeight: 28, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          {hoveredPoint && (
-            <Chip size="small" label={`${hoveredPoint.time_label} • ${formatApi(hoveredPoint.predicted_api)} API • ${hoveredPoint.temperature}°C`}
-              sx={{ fontWeight: 600, bgcolor: dark ? '#243858' : '#eff6ff', color: dark ? 'text.primary' : '#1d4ed8' }} />
-          )}
+        <Box
+          role="group"
+          aria-label="24-hour curve legend"
+          sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 1.5, mt: 0.5, mb: 2 }}
+        >
+          {[
+            { label: 'Predicted API (left axis)', color: palette.primary.main, style: 'solid' },
+            overlayMetric === 'both_regimes'
+              ? { label: 'Peak haze API (left axis)', color: hazeColor, style: 'dashed' }
+              : { label: 'Temperature (right axis)', color: tempColor, style: 'dashed' },
+            { label: 'Cleanest hour', color: cleanestColor },
+            { label: 'Peak hour', color: peakColor },
+            ...(overlayMetric === 'temperature' ? [{ label: 'Highest temperature', color: tempColor }] : []),
+          ].map(({ label, color, style }) => (
+            <Box key={label} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+              <Box aria-hidden="true" sx={style
+                ? { width: 16, borderTop: `2px ${style} ${color}` }
+                : { width: 8, height: 8, borderRadius: '50%', bgcolor: color }} />
+              <Typography variant="caption" color="text.secondary">{label}</Typography>
+            </Box>
+          ))}
         </Box>
       )}
 
+      {mode === 'diurnal24h' && (
+        <ChartPointReadout
+          anchor={inspectedPoint?.anchor}
+          open={inspectedPoint?.open}
+          reducedMotion={reducedMotion}
+        >
+          {inspectedPoint?.label}
+        </ChartPointReadout>
+      )}
+
       <Box sx={mode === 'diurnal24h' ? { flex: '1 0 auto', display: 'flex', alignItems: 'center' } : undefined}>
-        <svg ref={svgRef} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label="D3 Chart" />
+        <svg ref={svgRef} style={{ width: '100%', height: 'auto', display: 'block' }} role={mode === 'diurnal24h' ? 'group' : 'img'} aria-label={mode === 'diurnal24h' ? '24-hour curve. Use arrow keys to explore hours.' : 'Multi-day haze chart'} />
       </Box>
 
       {mode === 'multidayBrush' && (

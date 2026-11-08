@@ -35,7 +35,7 @@ const SafetyGaugeD3 = ({
     const centerX = width / 2;
     const centerY = height - 24;
     const outerRadius = 126;
-    const innerRadius = 90;
+    const innerRadius = 102;
     const maxScaleApi = 250;
 
     const svg = d3.select(svgEl);
@@ -102,7 +102,7 @@ const SafetyGaugeD3 = ({
         .text(val === maxScaleApi ? '250+' : Math.round(val));
     });
 
-    const needleLen = innerRadius - 10;
+    const needleLen = 80;
     const targetDeg = (angleScale(predictedApi) * 180) / Math.PI;
 
     g.append('path')
@@ -157,12 +157,12 @@ const SafetyGaugeD3 = ({
   }, [predictedApi, peakWindowApi, badgeColor, thresholds, reducedMotion, palette, dark]);
 
   return (
-    <Box sx={{ textAlign: 'center', py: 0.5 }}>
+    <Box sx={{ width: '100%', textAlign: 'center', py: 0.5 }}>
       <svg
         ref={svgRef}
         style={{ width: '100%', maxWidth: '320px', height: 'auto', overflow: 'visible' }}
         role="img"
-        aria-label="D3 Safety Dial Gauge"
+        aria-label="Safety Dial Gauge"
       />
       <Box sx={{ minHeight: 28, mt: 0.5 }}>
         {hoveredZone ? (

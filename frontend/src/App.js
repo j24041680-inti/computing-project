@@ -28,6 +28,9 @@ import {
   Container,
   Card,
   CardContent,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   Button,
   Box,
   Stack,
@@ -64,6 +67,7 @@ import {
 } from '@mui/material';
 import {
   Menu as MenuIcon,
+  ExpandMore as ExpandMoreIcon,
   Home as HomeIcon,
   Shield as ShieldIcon,
   CalendarMonth as CalendarIcon,
@@ -176,7 +180,7 @@ function AnimatedNumber({ value, duration = 1000, suffix = '' }) {
 
 const readableAccent = (color) => (theme) => theme.palette.mode === 'dark' ? lighten(color, 0.45) : color;
 
-function KpiCard({ icon, label, value, sub, color = '#2563eb', numeric = false, suffix = '' }) {
+function KpiCard({ icon, label, value, sub, color = '#2563eb', numeric = false, suffix = '', action }) {
   return (
     <Card
       className="result-card"
@@ -210,9 +214,12 @@ function KpiCard({ icon, label, value, sub, color = '#2563eb', numeric = false, 
         </Typography>
       </Stack>
       <Box sx={{ minWidth: 0 }}>
-        <Typography key={String(value)} className="reading-update" variant="h5" title={String(value ?? '')} sx={{ fontWeight: 900, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {numeric ? <AnimatedNumber value={value} suffix={suffix} /> : value}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+          <Typography key={String(value)} className="reading-update" variant="h5" title={String(value ?? '')} sx={{ fontWeight: 900, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {numeric ? <AnimatedNumber value={value} suffix={suffix} /> : value}
+          </Typography>
+          {action}
+        </Box>
         {sub && (
           <Typography
             variant="caption"
@@ -313,12 +320,10 @@ function App() {
   const cohort = 'general';
   const weatherRegime = 'typical';
 
-  // Isolated Analytics State
-  const [analyticsDistrict, setAnalyticsDistrict] = useState('Petaling Jaya');
+  const [analyticsDistrict, setAnalyticsDistrict] = useState(selectedDistrict);
   const [analyticsCorridor, setAnalyticsCorridor] = useState('All Corridors');
 
   // Chart Tabs
-  const [checkerChartTab, setCheckerChartTab] = useState(0);
   const [analyticsTab, setAnalyticsTab] = useState(0);
 
   // Payloads
@@ -576,6 +581,16 @@ function App() {
       if (!axios.isCancel(err)) setSnackbar({ open: true, severity: 'error', message: 'Unable to load analytics.' });
     }
   }, [analyticsDistrict, analyticsCorridor]);
+
+  useEffect(() => {
+    if (location.pathname === '/analytics') return;
+
+    // Prepare the next Analytics visit from the shared Checker and Planner selection.
+    setAnalyticsDistrict(selectedDistrict);
+    setAnalyticsCorridor('All Corridors');
+    setAnalyticsTab(0);
+    setAnalyticsData(null);
+  }, [location.pathname, selectedDistrict]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1326,28 +1341,30 @@ function App() {
                             alignItems: 'center',
                           }}
                         >
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={<DownloadIcon />}
-                            disabled={!assessment}
-                            aria-disabled={assessmentPending || !assessment}
-                            sx={{ cursor: assessmentPending ? 'progress' : 'pointer' }}
-                            onClick={() => { if (!assessmentPending) exportAssessmentToCsv(assessment); }}
-                          >
-                            CSV
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            startIcon={<PrintIcon />}
-                            disabled={!assessment}
-                            aria-disabled={assessmentPending || !assessment}
-                            sx={{ cursor: assessmentPending ? 'progress' : 'pointer' }}
-                            onClick={() => { if (!assessmentPending) window.print(); }}
-                          >
-                            Print
-                          </Button>
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }} role="group" aria-label="Export assessment">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<DownloadIcon />}
+                              disabled={!assessment}
+                              aria-disabled={assessmentPending || !assessment}
+                              sx={{ cursor: assessmentPending ? 'progress' : 'pointer' }}
+                              onClick={() => { if (!assessmentPending) exportAssessmentToCsv(assessment); }}
+                            >
+                              Download CSV
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<PrintIcon />}
+                              disabled={!assessment}
+                              aria-disabled={assessmentPending || !assessment}
+                              sx={{ cursor: assessmentPending ? 'progress' : 'pointer' }}
+                              onClick={() => { if (!assessmentPending) window.print(); }}
+                            >
+                              Print
+                            </Button>
+                          </Box>
                           <Button
                             size="small"
                             variant="contained"
@@ -1475,25 +1492,34 @@ function App() {
                       </Typography>
                     </Card>
 
-                    <Box>
-                      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, gap: 1.5 }}>
-                        <Button size="small" variant="outlined" sx={{ flexShrink: 0 }} startIcon={modelLoading ? <CircularProgress size={14} color="inherit" /> : null} disabled={assessmentPending || !assessment || modelLoading} onClick={handleRunModel}>
-                          {modelLoading ? 'Running model…' : 'Run Model Prediction'}
-                        </Button>
-                        <Typography variant="caption" color="text.secondary">
-                          Main readings and charts use the precomputed dataset.
+                    {assessment && (
+                      <Alert
+                        className="safety-recommendation"
+                        severity={
+                          assessment.moe_safety?.risk_key === 'safe' ? 'success'
+                            : assessment.moe_safety?.risk_key === 'caution' ? 'warning' : 'error'
+                        }
+                        icon={getTierIcon(assessment.moe_safety?.risk_key)}
+                        role="status"
+                        sx={{ alignItems: 'flex-start' }}
+                      >
+                        <Typography variant="caption" component="div" sx={{ mb: 0.5 }}>
+                          {assessmentPending ? 'Previous assessment' : 'Seasonal estimate'}
+                          {' · '}{formatDate(assessment.event_context?.event_date)}
+                          {' · '}{assessment.event_context?.start_time_label}–{assessment.event_context?.end_time_label}
+                          {' · '}{assessment.station?.district}
+                          {' · '}{formatApi(assessment.prediction?.predicted_api)} API
                         </Typography>
-                      </Box>
-                      {modelResult && <Alert className="prediction-result" role="status" severity="info" sx={{ mt: 1 }}>
-                        <Box>
-                          <strong>Model prediction: {formatApi(modelResult.predicted_api)} API</strong>
-                          {' · '}{modelResult.moe_safety?.tier_label}
-                        </Box>
-                        <Typography component="div" variant="caption" sx={{ display: 'block', mt: 0.5 }}>{modelResult.basis}</Typography>
-                      </Alert>}
-                      {modelError && <Alert severity="error" sx={{ mt: 1 }}>{modelError}</Alert>}
-                      {assessmentError && <Alert severity="error" sx={{ mt: 1 }}>{assessmentError}</Alert>}
-                    </Box>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                          {assessment.moe_safety?.headline}
+                        </Typography>
+                        <Typography component="div" variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                          {assessment.moe_safety?.advisories?.[0]}
+                        </Typography>
+                      </Alert>
+                    )}
+
+                    {assessmentError && <Alert severity="error" sx={{ mt: 1 }}>{assessmentError}</Alert>}
 
                     {/* Replay card entrances only when a new assessment arrives. */}
                     {assessment && (
@@ -1522,9 +1548,22 @@ function App() {
                         />
                         <KpiCard
                           icon={<TrendingUpIcon />}
-                          label="CLEANEST HOUR TODAY"
+                          label="CLEANEST HOUR ON SELECTED DATE"
                           value={assessment.time_optimization?.safest_daytime_label || '—'}
                           sub={`${formatApi(assessment.time_optimization?.safest_daytime_api)} API`}
+                          action={assessment.time_optimization?.safest_daytime_label && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              sx={{ height: 30, whiteSpace: 'nowrap' }}
+                              disabled={assessmentPending || startHour === assessment.time_optimization.safest_daytime_hour}
+                              onClick={() => handleChartHourSelect(assessment.time_optimization.safest_daytime_hour)}
+                            >
+                              {startHour === assessment.time_optimization.safest_daytime_hour
+                                ? 'Selected'
+                                : `Use ${assessment.time_optimization.safest_daytime_label}`}
+                            </Button>
+                          )}
                           color="#16a34a"
                         />
                         <KpiCard
@@ -1537,7 +1576,7 @@ function App() {
                       </Box>
                     )}
 
-                    {/* Dual Visual Cards: Gauge + Tabbed Trend / SHAP */}
+                    {/* Safety dial and 24-hour curve */}
                     {assessment && (
                       <Box
                         sx={{
@@ -1546,12 +1585,14 @@ function App() {
                           gap: 3,
                         }}
                       >
-                        <Card sx={{ p: { xs: 2, sm: 3 } }}>
+                        <Card sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column' }}>
                           <Box
                             sx={{
                               display: 'flex',
                               justifyContent: 'space-between',
                               alignItems: 'center',
+                              flexWrap: 'wrap',
+                              gap: 1,
                               mb: 1,
                               width: '100%',
                             }}
@@ -1564,63 +1605,66 @@ function App() {
                               sx={{ ml: 'auto' }}
                             />
                           </Box>
-                          <SafetyGaugeD3
-                            predictedApi={assessment.prediction?.predicted_api}
-                            peakWindowApi={assessment.prediction?.peak_window_api}
-                            badgeColor={assessment.moe_safety?.badge_color}
-                            thresholds={assessment.moe_safety?.thresholds}
-                          />
-                          <Alert
-                            key={assessment.moe_safety?.risk_key}
-                            className="safety-recommendation"
-                            severity={
-                              assessment.moe_safety?.risk_key === 'safe'
-                                ? 'success'
-                                : assessment.moe_safety?.risk_key === 'caution'
-                                ? 'warning'
-                                : 'error'
-                            }
-                            icon={getTierIcon(assessment.moe_safety?.risk_key)}
-                            sx={{ mt: 2, alignItems: 'flex-start' }}
-                          >
-                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                              {assessment.moe_safety?.headline}
-                            </Typography>
-                            <Typography component="div" variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-                              {assessment.moe_safety?.advisories?.[0]}
-                            </Typography>
-                          </Alert>
+                          <Box sx={{ flex: 1, display: 'grid', placeItems: 'center', py: 3 }}>
+                            <SafetyGaugeD3
+                              predictedApi={assessment.prediction?.predicted_api}
+                              peakWindowApi={assessment.prediction?.peak_window_api}
+                              badgeColor={assessment.moe_safety?.badge_color}
+                              thresholds={assessment.moe_safety?.thresholds}
+                            />
+                          </Box>
                         </Card>
 
                         <Card sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column' }}>
-                          <Tabs
-                            value={checkerChartTab}
-                            onChange={(_, v) => setCheckerChartTab(v)}
-                            sx={{ mb: 2 }}
-                          >
-                            <Tab label="24-Hour Curve" />
-                            <Tab label="SHAP Drivers" />
-                          </Tabs>
-                          {checkerChartTab === 0 ? (
-                            <DiurnalTrendD3
-                              mode="diurnal24h"
-                              diurnalSeries={assessment.diurnal_24h_series || []}
-                              selectedStartHour={startHour}
-                              durationHours={durationHours}
-                              safestDaytimeHour={
-                                assessment.time_optimization?.safest_daytime_hour || 7
-                              }
-                              thresholds={assessment.moe_safety?.thresholds}
-                              onSelectHour={handleChartHourSelect}
-                            />
-                          ) : (
-                            <ShapAttributionD3
-                              attributions={assessment.shap_attributions || []}
-                            />
-                          )}
+                          <Typography variant="h6" sx={{ fontWeight: 800, mb: 2 }}>24-Hour Curve</Typography>
+                          <DiurnalTrendD3
+                            mode="diurnal24h"
+                            diurnalSeries={assessment.diurnal_24h_series || []}
+                            selectedStartHour={startHour}
+                            durationHours={durationHours}
+                            safestDaytimeHour={
+                              assessment.time_optimization?.safest_daytime_hour || 7
+                            }
+                            thresholds={assessment.moe_safety?.thresholds}
+                            onSelectHour={handleChartHourSelect}
+                          />
                         </Card>
                       </Box>
                     )}
+
+                    <Accordion disableGutters>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />} id="checker-advanced-heading" aria-controls="checker-advanced-content">
+                        <Typography sx={{ fontWeight: 700 }}>Advanced model tools</Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Stack spacing={2}>
+                          <Box>
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'stretch', sm: 'center' }, gap: 1.5 }}>
+                              <Button size="small" variant="outlined" sx={{ flexShrink: 0 }} startIcon={modelLoading ? <CircularProgress size={14} color="inherit" /> : null} disabled={assessmentPending || !assessment || modelLoading} onClick={handleRunModel}>
+                                {modelLoading ? 'Running model…' : 'Run Model Prediction'}
+                              </Button>
+                              <Typography variant="caption" color="text.secondary">
+                                Main readings and charts use the precomputed dataset.
+                              </Typography>
+                            </Box>
+                            {modelResult && <Alert className="prediction-result" role="status" severity="info" sx={{ mt: 1 }}>
+                              <Box>
+                                <strong>Model prediction: {formatApi(modelResult.predicted_api)} API</strong>
+                                {' · '}{modelResult.moe_safety?.tier_label}
+                              </Box>
+                              <Typography component="div" variant="caption" sx={{ display: 'block', mt: 0.5 }}>{modelResult.basis}</Typography>
+                            </Alert>}
+                            {modelError && <Alert severity="error" sx={{ mt: 1 }}>{modelError}</Alert>}
+                          </Box>
+                          {assessment && (
+                            <Box sx={{ width: '100%', maxWidth: 760, alignSelf: 'center' }}>
+                              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Prediction drivers (SHAP)</Typography>
+                              <ShapAttributionD3 attributions={assessment.shap_attributions || []} />
+                            </Box>
+                          )}
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
 
                   </Stack>
                 }
@@ -2137,7 +2181,7 @@ function App() {
                 element={
                   <Stack spacing={2.5}>
                     <PageHeader
-                      title="D3.js Environmental Analytics"
+                      title="Environmental Analytics"
                       subtitle="Interactive visualizations across 26 monitoring stations and 4 corridors."
                       actions={
                         <Box
@@ -2188,11 +2232,11 @@ function App() {
                         scrollButtons="auto"
                         sx={{ mb: 3 }}
                       >
-                        <Tab label="Multi-Day Brush-Zoom (D3.js)" />
-                        <Tab label="12-Month Regional Heatmap (D3.js)" />
+                        <Tab label="12-Month Regional Heatmap" />
+                        <Tab label="7-Day Haze Trends" />
                       </Tabs>
 
-                      {analyticsTab === 0 && analyticsData && (
+                      {analyticsTab === 1 && analyticsData && (
                         <DiurnalTrendD3
                           mode="multidayBrush"
                           multidaySeries={analyticsData.multiday_series || []}
@@ -2200,7 +2244,7 @@ function App() {
                         />
                       )}
 
-                      {analyticsTab === 1 && analyticsData && (
+                      {analyticsTab === 0 && analyticsData && (
                         <SeasonalHeatmapD3
                           seasonalCells={analyticsData.seasonal_heatmap || []}
                           selectedDistrict={analyticsData.filters.district}
