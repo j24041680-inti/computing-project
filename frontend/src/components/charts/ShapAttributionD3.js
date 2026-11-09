@@ -1,14 +1,12 @@
 import useReducedMotion from '../../hooks/useReducedMotion';
 import { formatApi } from '../../utils/formatApi';
 import ChartPointReadout from './ChartPointReadout';
+
 /**
- * ShapAttributionD3.js
- * ============================================================================
- * Chart 3 (D3.js): Minimalist TreeSHAP Feature Attribution Bar Chart
- * Unit: COS30049 Computing Technology Innovation Project (Group 7 - SchoolAir)
- *
- * Fix: Full cleanup on unmount to prevent stale D3 listeners blocking navigation.
- */
+ ShapAttributionD3.js
+
+ Chart 3 (D3.js): Minimalist TreeSHAP Feature Attribution Bar Chart
+ **/
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';

@@ -1,6 +1,6 @@
 """
 SchoolAir Phase 3 - Pre-Computed AI Forecast & Explainability Dataset Generator
-================================================================================
+
 Unit: COS30049 Computing Technology Innovation Project (Group 7)
 Purpose:
     Uses the trained Assignment 2 XGBoost models (champion_regressor.joblib and
@@ -21,9 +21,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
-# ---------------------------------------------------------------------------
 # 1. File Paths & Directory Configuration
-# ---------------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, "models")
 OUTPUT_DATA_DIR = os.path.join(BASE_DIR, "data")
@@ -37,7 +35,7 @@ os.makedirs(OUTPUT_DATA_DIR, exist_ok=True)
 def haversine_distance_km(lat1, lon1, lat2, lon2):
     """
     Calculates the great-circle distance in kilometers between two GPS points
-    using the Haversine formula (Section 2.4 of Assignment 2 Report).
+    using the Haversine formula
     """
     R = 6371.0
     phi1 = np.radians(lat1)
@@ -140,9 +138,7 @@ def main():
     schools_df.to_csv(schools_path, index=False)
     print(f"   Saved {len(schools_df)} schools to {schools_path}")
 
-    # -----------------------------------------------------------------------
     # 3. Generate Pre-Computed Hourly Forecasts (26 stations x 12 months x 24 hours)
-    # -----------------------------------------------------------------------
     print("3. Computing aggregated hourly station profiles (26 stations x 12 months x 24h)...")
     grouped = df.groupby(["district", "state", "corridor", "latitude", "longitude", "month", "hour"], as_index=False).agg(
         raw_mean_api=("API", "mean"),
@@ -161,8 +157,7 @@ def main():
     )
 
     # Apply pre-pandemic Malaysian monsoon & diurnal boundary-layer physical modulation
-    # (compensating for 2020-2021 MCO lockdown flattening in multi-year raw means)
-    # Seasonal factor: Northeast Monsoon / Inter-monsoon (Feb, Mar, Apr, Dec) are cleanest;
+    # Seasonal factor: Northeast Monsoon / Inter-monsoon (Feb, Mar, Apr, Dec) are cleanest
     # Southwest Monsoon dry season (Jun, Jul, Aug, Sep) experiences transboundary peatland haze.
     seasonal_factors = {
         1: 0.90,   # Jan: Moderate Northeast Monsoon
@@ -272,9 +267,7 @@ def main():
     hourly_forecasts_df.to_csv(hourly_path, index=False)
     print(f"   Saved {len(hourly_forecasts_df):,} pre-computed hourly forecasts to {hourly_path}")
 
-    # -----------------------------------------------------------------------
     # 5. Generate Pre-Computed 12-Month Summary per Station (312 rows)
-    # -----------------------------------------------------------------------
     print("5. Building 12-month seasonal event planning summary across 26 stations...")
     raw_monthly = df.groupby(["district", "state", "corridor", "month"], as_index=False).agg(
         total_hours=("API", "count"),
@@ -323,9 +316,7 @@ def main():
     monthly_summary.to_csv(monthly_path, index=False)
     print(f"   Saved {len(monthly_summary):,} monthly station summaries to {monthly_path}")
 
-    # -----------------------------------------------------------------------
     # 6. Extract Representative Multi-Day Peak Episode Series for Brush-Zoom D3 Chart
-    # -----------------------------------------------------------------------
     print("6. Extracting multi-day episode time-series for D3 brush-zoom chart...")
     df["datetime_dt"] = pd.to_datetime(df["datetime"])
     mask_window = (df["datetime_dt"] >= "2019-09-12") & (df["datetime_dt"] < "2019-09-19")
@@ -344,9 +335,7 @@ def main():
         ep_out.to_csv(ep_path, index=False)
         print(f"   Saved {len(ep_out):,} multi-day hourly episode rows to {ep_path}")
 
-    # -----------------------------------------------------------------------
     # 7. Save Correlation Matrix & Feature Metadata JSON
-    # -----------------------------------------------------------------------
     print("7. Computing feature correlation matrices per corridor and nationwide...")
     corr_features = ["API", "temperature", "humidity", "wind_speed", "Lag_1h", "Lag_24h", "Target_API_24h"]
     corr_labels = ["Current API", "Temperature", "Humidity", "Wind Speed", "Lag 1h", "Lag 24h", "Target API 24h"]

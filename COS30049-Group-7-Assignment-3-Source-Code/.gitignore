@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Python Virtual Environments
+.venv/
+backend/.venv/
+env/
+venv/
+ENV/
+
+# Python cache & compiled artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+
+# Build outputs
+build/
+frontend/build/
+dist/
+
+# Mac OS metadata
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+*.DS_Store
+*/.DS_Store
+*/*/.DS_Store
+
+# Editor / IDE configuration
+.vscode/
+.idea/
+
+# Large raw dataset archives (Assignment 2)
+*.csv.gz
+*.tar.gz
+*.zip
+full_weather.csv
+APIMS-final.csv

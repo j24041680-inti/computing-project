@@ -1,16 +1,12 @@
 import { formatDate } from './dateFormat';
 import { formatApi } from './formatApi';
 /**
- * exportUtils.js
- * ============================================================================
- * Client-side CSV Export and Printable MOE Compliance Report Utilities
- * Unit: COS30049 Computing Technology Innovation Project (Group 7 - SchoolAir)
- */
+ exportUtils.js
+ 
+ Client-side CSV Export and Printable MOE Compliance Report Utilities
+ Unit: COS30049 Computing Technology Innovation Project (Group 7 - SchoolAir)
+ **/
 
-/**
- * Converts an array of flat objects into a RFC-4180 compliant CSV string and
- * triggers an immediate browser file download.
- */
 export function downloadCsvFile(filename, rows) {
   if (!rows || rows.length === 0) return;
 

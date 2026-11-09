@@ -5,9 +5,8 @@ import { revealLine } from '../../utils/chartMotion';
 import useReducedMotion from '../../hooks/useReducedMotion';
 import { formatApi } from '../../utils/formatApi';
 /**
- * DiurnalTrendD3.js — Clean Multi-Day Brush-Zoom Chart (No Summary Panel)
- * Unit: COS30049 Group 7
- */
+ DiurnalTrendD3.js — Clean Multi-Day Brush-Zoom Chart (No Summary Panel)
+ **/
 
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import * as d3 from 'd3';
@@ -49,9 +48,7 @@ const DiurnalTrendD3 = ({
     return `${point.time_label} · ${formatApi(point.predicted_api)} API · ${formatApi(point.temperature)}°C${overlay}`;
   }, [overlayMetric]);
 
-  // ═══════════════════════════════════════════════════════════════
   // DIURNAL 24-HOUR MODE
-  // ═══════════════════════════════════════════════════════════════
   useEffect(() => {
     if (mode !== 'diurnal24h') return;
     const svgEl = svgRef.current;
@@ -278,9 +275,7 @@ const DiurnalTrendD3 = ({
     };
   }, [mode, diurnalSeries, selectedStartHour, durationHours, safestDaytimeHour, thresholds, overlayMetric, showBands, onSelectHour, reducedMotion, palette, dark, describePoint, hazeColor, tempColor, cleanestColor, peakColor, overlayClipId]);
 
-  // ═══════════════════════════════════════════════════════════════
-  // MULTI-DAY BRUSH-ZOOM MODE
-  // ═══════════════════════════════════════════════════════════════
+  // Multi-Day Brush-Zoom Mode
   useEffect(() => {
     if (mode !== 'multidayBrush') return;
     const svgEl = svgRef.current;

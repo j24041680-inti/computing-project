@@ -6,6 +6,8 @@
 **Group Identification:** Group 7 (Poh Wei Le, Ng Boon Ping, Kennard Chan Kai Lik, Tee Ming Jun)  
 **Convenor / Lecturer:** Mohamad Faizal Alias  
 
+Running the submission ZIP? Start with the [Windows setup](#3-first-time-setup-on-windows-powershell) or the [macOS and Linux setup](#4-setup-on-macos-and-linux).
+
 ---
 
 ## 1. System Overview
@@ -15,7 +17,7 @@
 The platform bridges trained **XGBoost** regression and classification models with a modern, responsive web stack:
 - **Frontend:** React 19, Material UI (MUI), and four custom D3.js (v7) visualization engines.
 - **Backend:** High-performance FastAPI REST server with Pydantic boundary validation.
-- **Machine Learning Core:** XGBoost universal cross-platform model boosters (`champion_regressor.json`, `champion_classifier.json`) serving precomputed hourly hazard forecasts across all 26 DOE air quality monitoring stations in Malaysia, alongside a live What-If scenario inference engine.
+- **Machine Learning Core:** XGBoost universal cross-platform model boosters (`champion_regressor.json`, `champion_classifier.json`) serving precomputed hourly hazard forecasts across all 26 DOE air quality monitoring stations in Malaysia, with optional on-demand inference using stored seasonal features.
 - **Regulatory Framework:** Evaluates student exposure against **Malaysian Ministry of Education (MOE) Circular No. 1/2019** and the **Malaysian Ambient Air Quality Standard (MAAQS)** across three student vulnerability cohorts (*Cohort A: General*, *Cohort B: High-Intensity Athletic*, *Cohort C: Asthmatic & Respiratory Sensitive*).
 
 ---
@@ -59,7 +61,8 @@ computing-project/
         ├── utils/
         │   └── exportUtils.js                    <-- CSV and printable PDF export utilities
         └── components/
-            └── charts/                           <-- Custom Interactive D3.js Visualizations
+            └── charts/                           <-- D3.js charts and shared tooltip
+                ├── ChartPointReadout.js          <-- Shared tooltip for the curves, heatmap, and SHAP chart
                 ├── SafetyGaugeD3.js              <-- Semicircle dial gauge with animated needle
                 ├── DiurnalTrendD3.js             <-- 24h diurnal curve & 168h Focus+Context brush-zoom
                 ├── ShapAttributionD3.js          <-- TreeSHAP feature attribution bar chart
@@ -68,166 +71,107 @@ computing-project/
 
 ---
 
-## 3. First-Time Setup Guide (From Scratch)
+## 3. First-Time Setup on Windows (PowerShell)
 
-Follow these steps if you are setting up the project on a new computer.
+### Step 1. Install the prerequisites and extract the ZIP
 
-### Step 3.1: Install Required Software
-Ensure the following are installed:
-1. **Git** or **GitHub Desktop**: [https://desktop.github.com/](https://desktop.github.com/)
-2. **Node.js (LTS version 18, 20, or 22)**: [https://nodejs.org/](https://nodejs.org/) *(installs both `node` and `npm`)*
-3. **Python (version 3.10, 3.11, or 3.12 recommended)**: [https://www.python.org/downloads/](https://www.python.org/downloads/)  
-   *Windows Users:* During Python installation, make sure to check the box **"Add Python to PATH"**.
+- Install [Node.js 22](https://nodejs.org/en/download) and [64-bit Python 3.12](https://www.python.org/downloads/windows/). For a typical Intel or AMD laptop, choose the x64 installers.
+- Make sure the Microsoft Visual C++ Redistributable is installed for XGBoost. The Windows download is linked in the [XGBoost installation guide](https://xgboost.readthedocs.io/en/stable/install.html#python).
+- Right-click the submission ZIP and choose **Extract All**. Use a local folder you can write to. Open the extracted folder containing this README and the `backend` and `frontend` folders. You can open PowerShell there by typing `powershell` in File Explorer’s address bar and pressing Enter.
 
-Verify installations in your terminal:
-```bash
-git --version
-node -v
-python --version
-```
+The ZIP includes the precomputed data and trained JSON models. The first-time dependency installation needs internet access.
 
----
+In PowerShell, check that the tools are available:
 
-### Step 3.2: Clone or Pull the Repository
-- **Using GitHub Desktop:** Click **File** > **Clone Repository**, select `computing-project`, and choose a local destination folder.
-- **Using Git CLI:**
-  ```bash
-  git clone https://github.com/<your-username>/computing-project.git
-  cd computing-project
-  ```
-
----
-
-### Step 3.3: Set Up the Backend (Python FastAPI)
-
-1. Open a terminal in the project root and navigate to `backend`:
-   ```bash
-   cd backend
-   ```
-
-2. Create an isolated virtual environment (`.venv`):
-   - **Windows:**
-     ```powershell
-     python -m venv .venv
-     ```
-   - **macOS / Linux:**
-     ```bash
-     python3 -m venv .venv
-     ```
-
-3. Install required Python packages into `.venv`:
-   - **Windows:**
-     ```powershell
-     .\.venv\Scripts\python.exe -m pip install --upgrade pip
-     .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-     ```
-   - **macOS / Linux:**
-     ```bash
-     source .venv/bin/activate
-     pip install --upgrade pip
-     pip install -r requirements.txt
-     ```
-
-4. Start the backend server:
-   - **Windows (Direct path, avoids PowerShell script execution blocks):**
-     ```powershell
-     .\.venv\Scripts\python.exe -m uvicorn main:app --reload
-     ```
-   - **macOS / Linux:**
-     ```bash
-     source .venv/bin/activate
-     uvicorn main:app --reload
-     ```
-
-5. Verify backend health:
-   - Open your browser and navigate to: **[http://localhost:8000/docs](http://localhost:8000/docs)**
-   - You should see the interactive Swagger UI and `[SchoolAir] Successfully initialized live XGBoost models.` in the terminal.
-   - *Leave this terminal window running.*
-
----
-
-### Step 3.4: Set Up the Frontend (React.js + D3.js)
-
-1. Open a **second terminal window** and navigate to `frontend`:
-   ```bash
-   cd computing-project/frontend
-   ```
-
-2. Install JavaScript packages:
-   ```bash
-   npm install --legacy-peer-deps
-   ```
-
-3. Start the React development server:
-   ```bash
-   npm start
-   ```
-
-4. Open the web app:
-   - The browser will automatically open **[http://localhost:3000](http://localhost:3000)**.
-   - The top navigation bar should display a green **Online** status badge.
-
----
-
-## 4. Daily Running Commands (Subsequent Launches)
-
-Once the first-time setup is complete, you only need to run the two servers:
-
-### Terminal 1: Backend (FastAPI)
 ```powershell
-# Windows:
-cd computing-project\backend
-.\.venv\Scripts\python.exe -m uvicorn main:app --reload
-
-# macOS / Linux:
-cd computing-project/backend
-source .venv/bin/activate
-uvicorn main:app --reload
+node --version
+npm.cmd --version
+py -3.12 --version
 ```
 
-### Terminal 2: Frontend (React)
+If `py` is unavailable and `python --version` shows Python 3.12, use `python -m venv .venv` in place of the `py -3.12 -m venv .venv` command below.
+
+### Step 2. Start the backend in the first PowerShell window
+
+Run these commands from the folder containing this README:
+
+```powershell
+cd backend
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+Leave this window open. The [health endpoint](http://localhost:8000/api/v1/health) should show `"status": "online"`. The [interactive API documentation](http://localhost:8000/docs) is also available.
+
+### Step 3. Start the frontend in a second PowerShell window
+
+Open the second window in the folder containing this README:
+
+```powershell
+cd frontend
+npm.cmd ci --legacy-peer-deps
+npm.cmd start
+```
+
+Leave this window open and go to [http://localhost:3000](http://localhost:3000). Check that the navigation bar shows **Online**. To verify XGBoost inference separately, go to **Safety Checker**, expand **Advanced model tools**, and click **Run Model Prediction**. A successful run shows a separate model prediction for the selected event.
+
+### Start SchoolAir again later
+
+From the folder containing this README, run the backend and frontend commands in separate PowerShell windows. Keep both windows open while using the app. Press **Ctrl+C** in each window to stop its server.
+
+**Backend**
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+**Frontend**
+
+```powershell
+cd frontend
+npm.cmd start
+```
+
+---
+
+## 4. Setup on macOS and Linux
+
+With Node.js 22 and Python 3.12 installed, open two terminals in the folder containing this README.
+
+**Backend**
+
 ```bash
-cd computing-project/frontend
+cd backend
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+**Frontend**
+
+```bash
+cd frontend
+npm ci --legacy-peer-deps
 npm start
 ```
 
-*(On macOS/Linux, you can also run `./start_schoolair.sh` from the repository root to launch both simultaneously).*
+Open [http://localhost:3000](http://localhost:3000). After setup, run just the server commands in their respective folders, or run `./start_schoolair.sh` from the folder containing this README.
 
 ---
 
-## 5. Troubleshooting & FAQ
+## 5. Troubleshooting
 
-### Q1: `xgboost._c_api.XGBoostError: input stream corrupted` on Windows
-- **Cause:** Occurs when loading raw C++ pickled buffers from `.joblib` files across differing operating systems (macOS vs Windows).
-- **Solution:** SchoolAir includes cross-platform JSON model boosters (`champion_regressor.json` and `champion_classifier.json`). Ensure you have pulled the latest commit from the repository, which loads `.json` models by default.
-
-### Q2: PowerShell says `running scripts is disabled on this system`
-- **Cause:** Windows restricts running `.ps1` activation scripts by default.
-- **Solution:** You do not need to activate the environment. Execute Python directly from the virtual environment:
-  ```powershell
-  .\.venv\Scripts\python.exe -m uvicorn main:app --reload
-  ```
-  Alternatively, enable local script execution in PowerShell (Run as Administrator):
-  ```powershell
-  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-  ```
-
-### Q3: `ModuleNotFoundError: No module named 'xgboost'` or `pandas`
-- **Cause:** The terminal is running your computer's global Python rather than the virtual environment's Python.
-- **Solution:** Always run commands using `.\.venv\Scripts\python.exe` on Windows or `source .venv/bin/activate` on macOS. In VS Code, press `Ctrl + Shift + P` > **Python: Select Interpreter** > select `backend\.venv\Scripts\python.exe`.
-
-### Q4: Port 8000 or 3000 is already in use
-- **Solution:** Stop any existing processes running on those ports:
-  - **Windows:**
-    ```powershell
-    netstat -ano | findstr :8000
-    taskkill /PID <PID> /F
-    ```
-  - **macOS / Linux:**
-    ```bash
-    lsof -ti :8000 | xargs kill -9
-    lsof -ti :3000 | xargs kill -9
-    ```
+| What you see | What to do |
+| :--- | :--- |
+| `node`, `npm.cmd`, or `py` is unrecognised | Reopen PowerShell after installing Node.js or Python so it picks up the updated paths. For Python, check the fallback in Step 1. |
+| PowerShell says scripts are disabled | Use `npm.cmd` and run `.\.venv\Scripts\python.exe` directly, as shown above. |
+| `No module named ...` | From `backend`, repeat the dependency installation with the virtual environment’s Python. |
+| XGBoost reports a missing DLL | Check that the Microsoft Visual C++ Redistributable is installed, then restart the backend. See the [XGBoost Windows prerequisites](https://xgboost.readthedocs.io/en/stable/install.html#python). |
+| The site shows **Offline** | Check that the backend window is still running on port 8000 and open the health endpoint from Step 2. |
+| The site is online but **Run Model Prediction** fails | Check the backend terminal for model-loading messages and confirm `champion_regressor.json` and `champion_classifier.json` are present in `backend/models/`. |
+| Port 8000 or 3000 is already in use | If another SchoolAir server is running in a terminal you opened, stop it with **Ctrl+C** and try again. If the React server starts on a different port, use the local URL it prints. Keep the backend on port 8000. |
 
 ---
 
@@ -259,7 +203,7 @@ The backend provides full Swagger UI documentation at `http://localhost:8000/doc
 
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| **GET** | `/api/v1/health` | Service status, loaded model type, and precomputed record counts |
+| **GET** | `/api/v1/health` | Service status, station and forecast counts, and model metrics |
 | **GET** | `/api/v1/stations` | List of 26 monitoring stations and 4 regional corridors |
 | **GET** | `/api/v1/forecast-lookup` | Retrieves precomputed hourly forecasts, MOE directive, and SHAP data |
 | **POST** | `/api/v1/model-prediction` | Reruns the model using stored seasonal features; returns a separate prediction |
@@ -287,7 +231,15 @@ SchoolAir operationalizes the **Ministry of Education Malaysia Circular No. 1/20
 
 ## Backend regression checks
 
-Run from the repository root:
+Run from the folder containing this README after installing the backend dependencies.
+
+**Windows PowerShell**
+
+```powershell
+.\backend\.venv\Scripts\python.exe -m unittest discover -s backend/tests -v
+```
+
+**macOS and Linux**
 
 ```bash
 backend/.venv/bin/python -m unittest discover -s backend/tests -v

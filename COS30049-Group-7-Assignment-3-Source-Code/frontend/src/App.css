@@ -1,0 +1,285 @@
+/* ============================================================
+   SchoolAir — Mobile-First, Responsive & Fluid Stylesheet
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  max-width: 100vw;
+  /* Clip sideways overflow without creating a scroll container for the sticky header. */
+  overflow-x: clip !important;
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure no container or SVG can ever force horizontal scroll on phone/tablet */
+.page-enter,
+.MuiContainer-root,
+.MuiBox-root,
+.MuiCard-root,
+.MuiPaper-root {
+  max-width: 100%;
+}
+
+/* Responsive Table Container */
+.MuiTableContainer-root {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Responsive SVG graphics */
+svg {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+svg .brush .overlay {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+svg .brush .selection {
+  pointer-events: all !important;
+  cursor: grab !important;
+}
+
+svg .brush .selection:active {
+  cursor: grabbing !important;
+}
+
+/* Uniform Form Control Heights */
+.uniform-control {
+  height: 40px !important;
+}
+
+.uniform-control .MuiInputBase-root {
+  height: 40px !important;
+}
+
+/* Page Transitions */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter {
+  animation: fadeInUp 0.35s ease forwards;
+}
+
+.home-wind path {
+  stroke-dasharray: 1;
+  animation: windSweep 600ms ease-out backwards;
+}
+.home-wind path:nth-child(2) { animation-delay: 65ms; }
+.home-wind path:nth-child(3) { animation-delay: 130ms; }
+@keyframes windSweep {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+
+/* Card & Button micro-interactions */
+.MuiCard-root {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
+}
+
+.MuiButton-root {
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.MuiButton-root:active {
+  transform: scale(0.98);
+}
+
+.MuiCard-root.planner-month {
+  transition: background-color 180ms ease-out, border-color 180ms ease-out, box-shadow 180ms ease-out !important;
+}
+
+.safety-recommendation .MuiAlert-icon {
+  animation: recommendation-settle 220ms ease-out;
+}
+
+@keyframes recommendation-settle {
+  from { transform: translateY(3px); }
+  to { transform: translateY(0); }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+  }
+}
+
+/* Short entrances keep attention on newly available results. */
+.result-card,
+.prediction-result {
+  animation: resultArrival 320ms ease-out backwards;
+}
+.result-card:nth-child(2) { animation-delay: 45ms; }
+.result-card:nth-child(3) { animation-delay: 90ms; }
+.result-card:nth-child(4) { animation-delay: 135ms; }
+@keyframes resultArrival {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.event-row {
+  transition: background-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  animation: resultArrival 250ms ease-out;
+}
+.event-row.event-row-saved {
+  animation: resultArrival 250ms ease-out, savedEventHighlight 1.4s ease-out;
+}
+@keyframes savedEventHighlight {
+  0%, 25% { background-color: color-mix(in srgb, #16a34a 22%, transparent); }
+  100% { background-color: transparent; }
+}
+.saved-event-check {
+  animation: savedEventCheck 260ms ease-out backwards;
+}
+@keyframes savedEventCheck {
+  from { opacity: 0; transform: scale(0.7); }
+  to { opacity: 1; transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-row.event-row-saved {
+    box-shadow: inset 3px 0 #16a34a;
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .event-row:hover {
+    transform: translateY(-1px);
+    box-shadow: inset 3px 0 #2563eb, 0 3px 8px rgba(15, 23, 42, 0.06);
+  }
+}
+.connection-pending::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: connectionPulse 1200ms ease-in-out infinite;
+}
+@keyframes connectionPulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+/* Keep every result immediate and readable when motion is disabled. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .MuiCard-root:hover, .MuiButton-root:active { transform: none !important; }
+}
+@media print {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Fade the deleted row in place; column widths stay fixed throughout. */
+.event-row.event-row-exit {
+  pointer-events: none;
+  animation: eventDeparture 180ms ease-out forwards;
+}
+@keyframes eventDeparture {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-row.event-row-exit { animation: none !important; }
+}
+
+.safety-print-report { display: none; }
+@page { size: A4 portrait; margin: 14mm 12mm; }
+@media print {
+  html, body, #root {
+    width: auto !important;
+    max-width: none !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: white !important;
+  }
+  .safety-checker-screen, .MuiSnackbar-root, .MuiDialog-root { display: none !important; }
+  .safety-print-report {
+    display: block;
+    color: #172033;
+    background: white;
+    font: 10pt/1.45 Arial, sans-serif;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .report-page { break-after: page; }
+  .report-page:last-child { break-after: auto; }
+  .report-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 18px; }
+  .report-header span { font-size: 9pt; color: #475569; }
+  .report-brand { letter-spacing: 2px; color: #2563eb; font-size: 9pt; font-weight: 700; margin: 0 0 4px; }
+  .report-page h1 { font-size: 21pt; line-height: 1.2; margin: 0; }
+  .report-page h2 { font-size: 15pt; margin: 0 0 12px; overflow-wrap: anywhere; }
+  .report-page h3 { font-size: 11pt; margin: 18px 0 8px; break-after: avoid; }
+  .report-page p { margin: 6px 0 10px; }
+  .report-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; margin: 0 0 16px; }
+  .report-details div { min-width: 0; }
+  .report-details dt { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.5px; color: #475569; }
+  .report-details dd { margin: 3px 0 0; font-weight: 600; overflow-wrap: anywhere; }
+  .report-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; break-inside: avoid; }
+  .report-metrics > div { border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; }
+  .report-metrics span, .report-metrics small { display: block; font-size: 8pt; color: #475569; }
+  .report-metrics strong { display: block; font-size: 23pt; line-height: 1.3; margin: 4px 0; color: #172033; }
+  .report-recommendation { font-weight: 700; }
+  .report-page ul { margin: 8px 0; padding-left: 18px; }
+  .report-page li { margin: 4px 0; }
+  .report-page svg { width: 100%; height: auto; overflow: visible; break-inside: avoid; }
+  .report-page svg text { font: 11px Arial, sans-serif; fill: #334155; }
+  .report-note, .report-footer { font-size: 8pt; color: #475569; }
+  .report-footer { border-top: 1px solid #cbd5e1; margin-top: 18px; padding-top: 8px; }
+  .report-model { border-left: 3px solid #2563eb; padding: 0 12px; margin-top: 18px; break-inside: avoid; }
+}
+
+/* Animate changing readings without hiding or remounting their cards. */
+@keyframes readingUpdate {
+  from { opacity: 0.75; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.reading-update { animation: readingUpdate 240ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .reading-update { animation: none !important; }
+}
+
+.chart-target:hover > rect,
+.chart-target:focus-visible > rect,
+.chart-target:hover > circle:first-child,
+.chart-target:focus-visible > circle:first-child {
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.heatmap-tile-inspected {
+  opacity: 0.68;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .chart-target:has(> rect) {
+    transition: opacity 150ms ease-out;
+  }
+}
