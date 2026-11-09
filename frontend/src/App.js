@@ -198,7 +198,7 @@ function KpiCard({ icon, label, value, sub, color = '#2563eb', numeric = false, 
         },
       }}
     >
-      <Stack direction="row" alignItems="center" spacing={1.2} sx={{ mb: 1 }}>
+      <Stack direction="row" spacing={1.2} sx={{ mb: 1, alignItems: 'center' }}>
         <Avatar sx={{ width: 32, height: 32, bgcolor: `${color}15`, color: readableAccent(color) }}>
           {React.cloneElement(icon, { fontSize: 'small' })}
         </Avatar>
@@ -859,10 +859,9 @@ function App() {
             <Toolbar disableGutters sx={{ minHeight: 64, gap: 1 }}>
               <Stack
                 direction="row"
-                alignItems="center"
                 spacing={1.2}
                 onClick={() => navigate('/')}
-                sx={{ textDecoration: 'none', color: 'inherit', flexGrow: 1, cursor: 'pointer' }}
+                sx={{ textDecoration: 'none', color: 'inherit', flexGrow: 1, cursor: 'pointer', alignItems: 'center' }}
               >
                 <Box
                   sx={{
@@ -921,7 +920,7 @@ function App() {
                 })}
               </Stack>
 
-              <Stack direction="row" alignItems="center" spacing={1.5} sx={{ ml: 2 }}>
+              <Stack direction="row" spacing={1.5} sx={{ ml: 2, alignItems: 'center' }}>
                 <Chip
                   size="small"
                   className={connecting ? 'connection-pending' : ''}
@@ -1067,7 +1066,7 @@ function App() {
                             select
                             fullWidth
                             label="District / Station"
-                            value={selectedDistrict}
+                            value={filteredStations.some((station) => station.district === selectedDistrict) ? selectedDistrict : ''}
                             onChange={(e) => setSelectedDistrict(e.target.value)}
                           >
                             {filteredStations.map((s) => (
@@ -1256,9 +1255,8 @@ function App() {
                           <CardContent sx={{ flexGrow: 1, p: 2.8 }}>
                             <Stack
                               direction="row"
-                              alignItems="center"
                               spacing={1.5}
-                              sx={{ mb: 1.5 }}
+                              sx={{ mb: 1.5, alignItems: 'center' }}
                             >
                               <Avatar
                                 sx={{
@@ -1410,7 +1408,7 @@ function App() {
                           select
                           fullWidth
                           label="District / Station"
-                          value={selectedDistrict}
+                          value={filteredStations.some((station) => station.district === selectedDistrict) ? selectedDistrict : ''}
                           onChange={(e) => setSelectedDistrict(e.target.value)}
                         >
                           {filteredStations.map((s) => (
@@ -1760,7 +1758,7 @@ function App() {
                             select
                             fullWidth
                             label="District / Monitoring Station"
-                            value={selectedDistrict}
+                            value={filteredStations.some((station) => station.district === selectedDistrict) ? selectedDistrict : ''}
                             onChange={(e) => setSelectedDistrict(e.target.value)}
                           >
                             {filteredStations.map((st) => (
@@ -1948,7 +1946,7 @@ function App() {
                         }}
                       >
                         <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Stack direction="row" alignItems="center" spacing={1}>
+                          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                             <CompareIcon color="primary" />
                             <Typography variant="h6" sx={{ fontWeight: 800 }}>Inter-School Campus Air Comparison Tool</Typography>
                           </Stack>
@@ -1973,7 +1971,7 @@ function App() {
                           select
                           fullWidth
                           label="Primary Campus / District A"
-                          value={compareDistrictA}
+                          value={stations.some((station) => station.district === compareDistrictA) ? compareDistrictA : ''}
                           onChange={(e) => setCompareDistrictA(e.target.value)}
                         >
                           {stations.map((s) => (
@@ -1986,7 +1984,7 @@ function App() {
                           select
                           fullWidth
                           label="Alternative Host Campus / District B"
-                          value={compareDistrictB}
+                          value={stations.some((station) => station.district === compareDistrictB) ? compareDistrictB : ''}
                           onChange={(e) => setCompareDistrictB(e.target.value)}
                         >
                           {stations.map((s) => (
@@ -2214,7 +2212,7 @@ function App() {
                             select
                             fullWidth
                             label="Station"
-                            value={analyticsDistrict}
+                            value={analyticsDistrict === 'All Stations' || filteredAnalyticsStations.some((station) => station.district === analyticsDistrict) ? analyticsDistrict : ''}
                             onChange={(e) => setAnalyticsDistrict(e.target.value)}
                           >
                             <MenuItem value="All Stations">All Stations</MenuItem>

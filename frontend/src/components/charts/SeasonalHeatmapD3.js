@@ -234,7 +234,7 @@ const SeasonalHeatmapD3 = ({
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexWrap: 'wrap' }}>
           <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.primary', mr: 0.5 }}>
             12-Month Regional Heatmap
           </Typography>

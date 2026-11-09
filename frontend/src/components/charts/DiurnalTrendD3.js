@@ -461,7 +461,7 @@ const DiurnalTrendD3 = ({
                 Drag either end of the highlighted area below to zoom in on a shorter time period.
               </Typography>
             </Box>
-            <Stack direction="row" spacing={1.5} alignItems="center">
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
               <Typography variant="caption" sx={{ fontWeight: 700, color: palette.text.primary }}>● Measured API</Typography>
               <Typography variant="caption" sx={{ fontWeight: 700, color: palette.primary.main }}>--- Forecast API</Typography>
             </Stack>
