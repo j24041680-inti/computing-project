@@ -180,6 +180,17 @@ const SeasonalHeatmapD3 = ({
     const scope = isSpecificSelected ? stationScope : 'all';
     const view = JSON.stringify([corridorName, selectedDistrict, scope, metricField]);
     const previousView = lastDrawnView.current;
+    if (!reducedMotion && scope === 'all' && previousView === JSON.stringify([corridorName, selectedDistrict, 'selected', metricField])) {
+      const station = districts.find((district) => district.toLowerCase() === selectedDistrict.toLowerCase());
+      if (station) {
+        g.insert('rect', ':first-child')
+          .attr('x', 4 - margin.left).attr('y', yScale(station) - 2)
+          .attr('width', innerW + margin.left).attr('height', yScale.bandwidth() + 4)
+          .attr('rx', 5).attr('fill', palette.primary.main).attr('opacity', 0.2)
+          .attr('pointer-events', 'none')
+          .transition().delay(300).duration(800).attr('opacity', 0).remove();
+      }
+    }
     // Fade the tile backgrounds from left to right while keeping values visible.
     if (view !== previousView && !reducedMotion) {
       cellGroups.select('rect').attr('opacity', 0)
@@ -244,17 +255,41 @@ const SeasonalHeatmapD3 = ({
           )}
         </Stack>
 
-        <ToggleButtonGroup
-          size="small"
-          value={metricField}
-          exclusive
-          onChange={(_, val) => val && setMetricField(val)}
-          sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 1.25, fontSize: '0.72rem', textTransform: 'none' } }}
+        <Box
+          sx={{
+            position: 'relative', display: 'inline-flex', maxWidth: '100%',
+            border: '1px solid', borderColor: 'divider', borderRadius: 99, bgcolor: 'action.hover',
+            '&::before': {
+              content: '""', position: 'absolute', top: 2, bottom: 2, left: 2,
+              width: 'calc((100% - 4px) / 3)', borderRadius: 99, bgcolor: 'background.paper',
+              boxShadow: 1, pointerEvents: 'none',
+              transform: `translateX(${Object.keys(METRICS).indexOf(metricField) * 100}%)`,
+              '@media (prefers-reduced-motion: no-preference)': { transition: 'transform 220ms ease-out' },
+            },
+          }}
         >
-          <ToggleButton value="planning_risk_index">Risk Index</ToggleButton>
-          <ToggleButton value="pred_mean_api">Typical API</ToggleButton>
-          <ToggleButton value="mean_temp">Temp (°C)</ToggleButton>
-        </ToggleButtonGroup>
+          <ToggleButtonGroup
+            size="small"
+            value={metricField}
+            exclusive
+            aria-label="Heatmap metric"
+            onChange={(_, val) => val && setMetricField(val)}
+            sx={{
+              width: '100%', p: '2px',
+              '& .MuiToggleButton-root': {
+                flex: '1 1 0', minWidth: 0, m: 0, py: 0.25, px: 1.25,
+                fontSize: '0.72rem', textTransform: 'none', whiteSpace: 'nowrap',
+                border: 0, borderRadius: 99,
+                '&.Mui-selected, &.Mui-selected:hover': { bgcolor: 'transparent', color: 'text.primary' },
+                '&.Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -2 },
+              },
+            }}
+          >
+            <ToggleButton value="planning_risk_index">Risk Index</ToggleButton>
+            <ToggleButton value="pred_mean_api">Typical API</ToggleButton>
+            <ToggleButton value="mean_temp">Temp (°C)</ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
       </Box>
 
       <Box

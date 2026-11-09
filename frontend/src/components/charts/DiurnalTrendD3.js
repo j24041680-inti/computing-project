@@ -9,7 +9,7 @@ import { formatApi } from '../../utils/formatApi';
  * Unit: COS30049 Group 7
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import {
   Box, Typography, ToggleButton, ToggleButtonGroup, Chip, Stack,
@@ -34,6 +34,9 @@ const DiurnalTrendD3 = ({
   const peakColor = dark ? '#fca5a5' : '#b91c1c';
   const svgRef = useRef(null);
   const focusedHour = useRef(null);
+  const previousWindow = useRef(null);
+  const previousOverlay = useRef(null);
+  const overlayClipId = `diurnal-overlay-${useId()}`;
   const [overlayMetric, setOverlayMetric] = useState('both_regimes');
   const [inspectedPoint, setInspectedPoint] = useState(null);
   const [brushStats, setBrushStats] = useState(null);
@@ -129,16 +132,34 @@ const DiurnalTrendD3 = ({
     const endHour = Math.min(23, selectedStartHour + durationHours - 1);
     const winX1 = xScale(selectedStartHour);
     const winX2 = xScale(endHour);
-    g.append('rect')
-      .attr('x', Math.max(0, winX1 - 8)).attr('y', 0)
-      .attr('width', Math.max(18, winX2 - winX1 + 16)).attr('height', innerH)
+    const windowX = Math.max(0, winX1 - 8);
+    const windowWidth = Math.min(innerW - windowX, Math.max(18, winX2 - winX1 + 16));
+    const priorWindow = previousWindow.current;
+    const windowBand = g.append('rect')
+      .attr('x', windowX).attr('y', 0)
+      .attr('width', windowWidth).attr('height', innerH)
       .attr('fill', (dark ? '#243858' : '#eff6ff')).attr('opacity', 0.7).attr('rx', 6);
+    if (!reducedMotion && priorWindow && (priorWindow.x !== windowX || priorWindow.width !== windowWidth)) {
+      windowBand.attr('x', priorWindow.x).attr('width', priorWindow.width)
+        .transition().duration(260).ease(d3.easeCubicOut)
+        .attr('x', windowX).attr('width', windowWidth);
+    }
 
     // Area
     const areaGen = d3.area()
       .x((d) => xScale(d.hour)).y0(innerH).y1((d) => yScale(d.predicted_api))
       .curve(d3.curveMonotoneX);
     g.append('path').datum(diurnalSeries).attr('fill', 'rgba(37, 99, 235, 0.12)').attr('d', areaGen);
+
+    const overlayChanged = previousOverlay.current !== null && previousOverlay.current !== overlayMetric;
+    previousOverlay.current = overlayMetric;
+    const overlayClip = overlayChanged && !reducedMotion ? `url(#${overlayClipId})` : null;
+    if (overlayClip) {
+      // Reveal the overlay from left to right while preserving its dashed stroke.
+      svg.append('defs').append('clipPath').attr('id', overlayClipId)
+        .append('rect').attr('x', -8).attr('y', -8).attr('height', innerH + 16).attr('width', 0)
+        .transition().duration(450).ease(d3.easeCubicOut).attr('width', innerW + 16);
+    }
 
     // Haze Overlay
     if (overlayMetric === 'both_regimes') {
@@ -147,6 +168,7 @@ const DiurnalTrendD3 = ({
         .curve(d3.curveMonotoneX);
       g.append('path').datum(diurnalSeries).attr('fill', 'none')
         .attr('stroke', hazeColor).attr('stroke-width', 1.8)
+        .attr('clip-path', overlayClip)
         .attr('stroke-dasharray', '5,4').attr('opacity', 0.75).attr('d', peakLine);
     }
 
@@ -165,6 +187,7 @@ const DiurnalTrendD3 = ({
 
         g.append('path').datum(diurnalSeries).attr('fill', 'none')
           .attr('stroke', tempColor).attr('stroke-width', 2)
+          .attr('clip-path', overlayClip)
           .attr('stroke-dasharray', '5,4').attr('d', tempLine);
 
         const tempAxis = g.append('g').attr('transform', `translate(${innerW}, 0)`)
@@ -176,6 +199,7 @@ const DiurnalTrendD3 = ({
         const hottest = diurnalSeries.find((d) => d.temperature === maxTemp);
         const label = `Highest temperature · ${hottest.time_label} · ${formatApi(maxTemp)}°C`;
         hottestMarker = g.append('circle')
+          .attr('clip-path', overlayClip)
           .attr('cx', xScale(hottest.hour)).attr('cy', tempScale(maxTemp))
           .attr('r', 6).attr('fill', tempColor)
           .attr('stroke', palette.background.paper).attr('stroke-width', 2)
@@ -193,7 +217,8 @@ const DiurnalTrendD3 = ({
       .x((d) => xScale(d.hour)).y((d) => yScale(d.predicted_api))
       .curve(d3.curveMonotoneX);
     g.append('path').datum(diurnalSeries).attr('fill', 'none')
-      .attr('stroke', palette.primary.main).attr('stroke-width', 2.8).attr('d', mainLine).call(revealLine, reducedMotion);
+      .attr('stroke', palette.primary.main).attr('stroke-width', 2.8).attr('d', mainLine)
+      .call(revealLine, reducedMotion || Boolean(priorWindow));
 
     // Peak Marker
     const peakPoint = d3.max(diurnalSeries, (d) => d.predicted_api);
@@ -243,6 +268,7 @@ const DiurnalTrendD3 = ({
     }
 
     return () => {
+      previousWindow.current = { x: Number(windowBand.attr('x')), width: Number(windowBand.attr('width')) };
       const active = svgEl.ownerDocument.activeElement;
       focusedHour.current = points.filter(function () { return this === active; }).nodes().length
         ? d3.select(active).datum().hour
@@ -250,7 +276,7 @@ const DiurnalTrendD3 = ({
       svg.selectAll('*').interrupt();
       svg.selectAll('*').remove();
     };
-  }, [mode, diurnalSeries, selectedStartHour, durationHours, safestDaytimeHour, thresholds, overlayMetric, showBands, onSelectHour, reducedMotion, palette, dark, describePoint, hazeColor, tempColor, cleanestColor, peakColor]);
+  }, [mode, diurnalSeries, selectedStartHour, durationHours, safestDaytimeHour, thresholds, overlayMetric, showBands, onSelectHour, reducedMotion, palette, dark, describePoint, hazeColor, tempColor, cleanestColor, peakColor, overlayClipId]);
 
   // ═══════════════════════════════════════════════════════════════
   // MULTI-DAY BRUSH-ZOOM MODE
@@ -450,9 +476,9 @@ const DiurnalTrendD3 = ({
           sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 1.5, mt: 0.5, mb: 2 }}
         >
           {[
-            { label: 'Predicted API (left axis)', color: palette.primary.main, style: 'solid' },
+            { label: 'Predicted API', color: palette.primary.main, style: 'solid' },
             overlayMetric === 'both_regimes'
-              ? { label: 'Peak haze API (left axis)', color: hazeColor, style: 'dashed' }
+              ? { label: 'Peak haze API', color: hazeColor, style: 'dashed' }
               : { label: 'Temperature (right axis)', color: tempColor, style: 'dashed' },
             { label: 'Cleanest hour', color: cleanestColor },
             { label: 'Peak hour', color: peakColor },

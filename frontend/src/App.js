@@ -32,6 +32,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   Button,
+  Fab,
   Box,
   Stack,
   Chip,
@@ -46,13 +47,8 @@ import {
   TableHead,
   TableRow,
   IconButton,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Divider,
+  BottomNavigation,
+  BottomNavigationAction,
   Switch,
   Dialog,
   DialogTitle,
@@ -64,9 +60,9 @@ import {
   Tooltip,
   Avatar,
   Paper,
+  useScrollTrigger,
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
   ExpandMore as ExpandMoreIcon,
   Home as HomeIcon,
   Shield as ShieldIcon,
@@ -78,6 +74,7 @@ import {
   Bolt as BoltIcon,
   Print as PrintIcon,
   ArrowForward as ArrowForwardIcon,
+  ArrowUpward as ArrowUpwardIcon,
   Air as AirIcon,
   CheckCircle as CheckIcon,
   Warning as WarningIcon,
@@ -273,6 +270,38 @@ const PageHeader = ({ title, subtitle, actions }) => (
     </Box>
   );
 
+const MOBILE_NAV_SPACE = '64px + env(safe-area-inset-bottom, 0px)';
+
+function BackToTop() {
+  const visible = useScrollTrigger({ threshold: 300, disableHysteresis: true });
+  const reducedMotion = useReducedMotion();
+
+  if (!visible) return null;
+
+  return (
+    <Tooltip title="Back to top">
+      <Fab
+        className="no-print"
+        color="primary"
+        size="medium"
+        aria-label="Back to top"
+        onClick={() => {
+          document.getElementById('site-navigation')?.focus({ preventScroll: true });
+          window.scrollTo({ top: 0, behavior: reducedMotion ? 'auto' : 'smooth' });
+        }}
+        sx={{
+          position: 'fixed',
+          right: 'calc(16px + env(safe-area-inset-right, 0px))',
+          bottom: { xs: `calc(16px + ${MOBILE_NAV_SPACE})`, md: '16px' },
+          zIndex: (theme) => theme.zIndex.speedDial,
+        }}
+      >
+        <ArrowUpwardIcon />
+      </Fab>
+    </Tooltip>
+  );
+}
+
 function App() {
   const reducedMotion = useReducedMotion();
   const location = useLocation();
@@ -280,7 +309,6 @@ function App() {
 
   // App Theme & UI State
   const [darkMode, setDarkMode] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [backendOnline, setBackendOnline] = useState(true);
   const [connecting, setConnecting] = useState(true);
@@ -303,6 +331,7 @@ function App() {
     'East Malaysia',
   ]);
   const [scheduledEvents, setScheduledEvents] = useState([]);
+  const [recentlySavedEventId, setRecentlySavedEventId] = useState(null);
 
   // Multi-Year & Date State
   const [selectedYear, setSelectedYear] = useState(2026);
@@ -706,8 +735,9 @@ function App() {
         weather_regime: weatherRegime,
       });
       setScheduledEvents((prev) => [res.data.event, ...prev]);
+      setRecentlySavedEventId(res.data.event.event_id);
       setAddEventDialogOpen(false);
-      showNotice(res.data.message || `Saved: ${trimmedTitle}`);
+      setSnackbar({ open: true, severity: 'success', message: res.data.message || `Saved: ${trimmedTitle}`, eventSaved: true });
     } catch (err) {
       showNotice(err.response?.data?.message || 'Failed to save event.', 'error');
     }
@@ -789,6 +819,7 @@ function App() {
         className={location.pathname === '/checker' ? 'app-screen safety-checker-screen' : 'app-screen'}
         sx={{
           colorScheme: darkMode ? 'dark' : 'light',
+          pb: { xs: `calc(${MOBILE_NAV_SPACE})`, md: 0 },
           '--chart-gauge-value': darkMode ? theme.palette.text.primary : undefined,
           '--chart-safe': darkMode ? '#86efac' : '#16a34a',
           '--chart-peak': darkMode ? '#fca5a5' : '#dc2626',
@@ -804,13 +835,15 @@ function App() {
           bgcolor: 'background.default',
           width: '100%',
           maxWidth: '100vw',
-          overflowX: 'hidden',
+          overflowX: 'clip',
         }}
       >
         {/* =================================================================
             APP BAR (Fluid Container)
             ================================================================= */}
         <AppBar
+          id="site-navigation"
+          tabIndex={-1}
           position="sticky"
           color="inherit"
           elevation={0}
@@ -819,21 +852,11 @@ function App() {
             borderBottom: '1px solid',
             borderColor: 'divider',
             bgcolor: darkMode ? '#0b1220' : '#ffffff',
-            zIndex: 1400,
             width: '100%',
           }}
         >
           <Container maxWidth="xl">
             <Toolbar disableGutters sx={{ minHeight: 64, gap: 1 }}>
-              <IconButton
-                edge="start"
-                color="inherit"
-                onClick={() => setDrawerOpen(true)}
-                sx={{ display: { md: 'none' } }}
-              >
-                <MenuIcon />
-              </IconButton>
-
               <Stack
                 direction="row"
                 alignItems="center"
@@ -925,52 +948,6 @@ function App() {
           </Container>
         </AppBar>
 
-        {/* Mobile Navigation Drawer */}
-        <Drawer anchor="left" open={drawerOpen} onClose={() => setDrawerOpen(false)}>
-          <Box sx={{ width: 260, pt: 2 }}>
-            <Stack direction="row" alignItems="center" spacing={1.2} sx={{ px: 2.5, pb: 2 }}>
-              <Box
-                sx={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 2,
-                  background: 'linear-gradient(135deg, #2563eb, #6366f1)',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <AirIcon fontSize="small" />
-              </Box>
-              <Typography variant="subtitle1" sx={{ fontWeight: 800 }}>
-                SchoolAir
-              </Typography>
-            </Stack>
-            <Divider />
-            <List>
-              {navItems.map((item) => (
-                <ListItem key={item.path} disablePadding>
-                  <ListItemButton
-                    onClick={() => {
-                      navigate(item.path);
-                      setDrawerOpen(false);
-                    }}
-                    selected={location.pathname === item.path}
-                    sx={{ borderRadius: 2, mx: 1, my: 0.5 }}
-                  >
-                    <ListItemIcon>{item.icon}</ListItemIcon>
-                    <ListItemText
-                      primary={item.label}
-                      primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </Drawer>
-
         {/* =================================================================
             MAIN CONTAINER
             ================================================================= */}
@@ -1011,6 +988,21 @@ function App() {
                         size="small"
                         sx={{ mb: 2, fontWeight: 700 }}
                       />
+                      <Box
+                        component="svg"
+                        className="home-wind"
+                        viewBox="0 0 80 28"
+                        aria-hidden="true"
+                        sx={{ display: 'block', width: 76, mx: 'auto', mb: 1.5, color: 'primary.main' }}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      >
+                        <path pathLength="1" d="M 15 8 H 54 C 62 8 62 2 57 2" />
+                        <path pathLength="1" d="M 5 14 H 69 C 77 14 77 7 72 7" />
+                        <path pathLength="1" d="M 22 20 H 51 C 59 20 59 26 54 26" />
+                      </Box>
                       <Typography
                         variant="h3"
                         sx={{ fontSize: { xs: '1.75rem', sm: '2.3rem', md: '2.85rem' }, mb: 1.5 }}
@@ -1223,23 +1215,23 @@ function App() {
                       {[
                         {
                           title: 'Safety Checker',
-                          desc: 'Assess specific dates & hours for any Malaysian school or district.',
+                          desc: 'Check an event’s safety with the dial gauge and 24-hour curve. See what drives the prediction under Advanced model tools.',
                           path: '/checker',
                           icon: <ShieldIcon />,
                           color: '#2563eb',
                           tag: 'Step 1',
                         },
                         {
-                          title: '12-Month Planner',
-                          desc: 'Identify low-risk months across the year and manage school event schedules.',
+                          title: 'Event Planner',
+                          desc: 'Find lower-risk months on the 12-month calendar, compare districts, and manage scheduled school events.',
                           path: '/planner',
                           icon: <CalendarIcon />,
                           color: '#7c3aed',
                           tag: 'Step 2',
                         },
                         {
-                          title: 'D3 Analytics',
-                          desc: 'Inspect multi-day haze trends, regional correlation matrices, and TreeSHAP.',
+                          title: 'Analytics',
+                          desc: 'Compare stations in the 12-Month Regional Heatmap, or explore measured and forecast air quality in 7-Day Haze Trends.',
                           path: '/analytics',
                           icon: <InsightsIcon />,
                           color: '#0891b2',
@@ -1332,16 +1324,17 @@ function App() {
                       title="School Activity Safety Checker"
                       subtitle="Select your state, district, and planned school event to assess air quality risk."
                       actions={
-                        <Stack
-                          direction="row"
-                          spacing={1}
+                        <Box
                           sx={{
+                            display: 'flex',
                             flexWrap: 'wrap',
+                            gap: 1,
                             width: { xs: '100%', sm: 'auto' },
                             alignItems: 'center',
+                            justifyContent: 'flex-end',
                           }}
                         >
-                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }} role="group" aria-label="Export assessment">
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1 }} role="group" aria-label="Export assessment">
                             <Button
                               size="small"
                               variant="outlined"
@@ -1380,7 +1373,7 @@ function App() {
                           >
                             Save Event
                           </Button>
-                        </Stack>
+                        </Box>
                       }
                     />
 
@@ -1606,12 +1599,19 @@ function App() {
                             />
                           </Box>
                           <Box sx={{ flex: 1, display: 'grid', placeItems: 'center', py: 3 }}>
-                            <SafetyGaugeD3
-                              predictedApi={assessment.prediction?.predicted_api}
-                              peakWindowApi={assessment.prediction?.peak_window_api}
-                              badgeColor={assessment.moe_safety?.badge_color}
-                              thresholds={assessment.moe_safety?.thresholds}
-                            />
+                            <Stack spacing={0.5} sx={{ width: '100%', textAlign: 'center' }}>
+                              <Typography variant="caption" color="text.secondary">
+                                The gauge shows the average predicted API for the full event window
+                                {' '}({assessment.event_context.start_time_label}–{assessment.event_context.end_time_label}).
+                                The cleanest-hour card shows one hour.
+                              </Typography>
+                              <SafetyGaugeD3
+                                predictedApi={assessment.prediction?.predicted_api}
+                                peakWindowApi={assessment.prediction?.peak_window_api}
+                                badgeColor={assessment.moe_safety?.badge_color}
+                                thresholds={assessment.moe_safety?.thresholds}
+                              />
+                            </Stack>
                           </Box>
                         </Card>
 
@@ -1680,20 +1680,20 @@ function App() {
                       title="12-Month Seasonal Event Planner"
                       subtitle="Plan events using historical seasonal estimates. The same estimates apply across planning years; these are not year-specific forecasts."
                       actions={
-                        <Stack
-                          direction="row"
-                          spacing={1}
+                        <Box
                           sx={{
-                            ml: { sm: 'auto' },
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 1,
                             width: { xs: '100%', sm: 'auto' },
-                            justifyContent: { xs: 'flex-start', sm: 'flex-end' },
+                            justifyContent: 'flex-end',
                           }}
                         >
                           <Button
                             variant="outlined"
                             startIcon={<DownloadIcon />}
                             disabled={!plannerData || plannerPending || Boolean(plannerError)}
-                          onClick={() => exportSeasonalPlannerToCsv(plannerData)}
+                            onClick={() => exportSeasonalPlannerToCsv(plannerData)}
                             sx={{ height: 40, px: 2 }}
                           >
                             Export CSV
@@ -1706,7 +1706,7 @@ function App() {
                           >
                             Add Event
                           </Button>
-                        </Stack>
+                        </Box>
                       }
                     />
 
@@ -1962,7 +1962,7 @@ function App() {
                           startIcon={<CompareIcon />}
                           onClick={handleCompareDistricts}
                           disabled={comparisonLoading}
-                          sx={{ ml: { sm: 'auto' } }}
+                          sx={{ ml: 'auto' }}
                         >
                           {comparisonLoading ? 'Comparing...' : 'Run Campus Comparison'}
                         </Button>
@@ -2106,9 +2106,13 @@ function App() {
                           </TableHead>
                           <TableBody>
                             {scheduledEvents.map((ev) => (
-                              <TableRow key={ev.event_id} hover className={`event-row${removingEvents.includes(ev.event_id) ? ' event-row-exit' : ''}`}
+                              <TableRow key={ev.event_id} hover className={`event-row${removingEvents.includes(ev.event_id) ? ' event-row-exit' : ''}${ev.event_id === recentlySavedEventId ? ' event-row-saved' : ''}`}
                                 onAnimationEnd={(event) => {
-                                  if (event.target === event.currentTarget && event.animationName === 'eventDeparture') finishEventRemoval(ev.event_id);
+                                  if (event.target !== event.currentTarget) return;
+                                  if (event.animationName === 'eventDeparture') finishEventRemoval(ev.event_id);
+                                  if (event.animationName === 'savedEventHighlight') {
+                                    setRecentlySavedEventId((id) => id === ev.event_id ? null : id);
+                                  }
                                 }}
                                 aria-busy={deletingEvents.includes(ev.event_id)}>
                                 <TableCell sx={{ whiteSpace: 'nowrap' }}>
@@ -2304,15 +2308,55 @@ function App() {
           </DialogActions>
         </Dialog>
 
+        <BottomNavigation
+          component="nav"
+          aria-label="Mobile navigation"
+          className="no-print"
+          value={location.pathname}
+          showLabels
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            position: 'fixed',
+            inset: 'auto 0 0',
+            height: `calc(${MOBILE_NAV_SPACE})`,
+            pb: 'env(safe-area-inset-bottom, 0px)',
+            zIndex: (theme) => theme.zIndex.appBar,
+            bgcolor: 'background.paper',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            '& .MuiBottomNavigationAction-root': { minWidth: 0, maxWidth: 'none', px: 0.5, gap: 0.5 },
+            '& .MuiBottomNavigationAction-label': { fontSize: '0.69rem', whiteSpace: 'nowrap' },
+            '& .MuiBottomNavigationAction-label.Mui-selected': { fontSize: '0.69rem', fontWeight: 700 },
+            '& .Mui-focusVisible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -3 },
+          }}
+        >
+          {navItems.map(({ path, label, icon }) => (
+            <BottomNavigationAction
+              key={path}
+              component={RouterLink}
+              to={path}
+              value={path}
+              label={label}
+              icon={icon}
+              aria-current={location.pathname === path ? 'page' : undefined}
+              onClick={() => window.scrollTo(0, 0)}
+            />
+          ))}
+        </BottomNavigation>
+
         <Snackbar
+          sx={{
+            bottom: { xs: `calc(8px + ${MOBILE_NAV_SPACE})`, sm: `calc(24px + ${MOBILE_NAV_SPACE})`, md: 24 },
+          }}
           open={snackbar.open}
           autoHideDuration={4000}
           onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
         >
-          <Alert severity={snackbar.severity} variant="filled">
+          <Alert severity={snackbar.severity} variant="filled" icon={snackbar.eventSaved ? <CheckIcon className="saved-event-check" /> : undefined}>
             {snackbar.message}
           </Alert>
         </Snackbar>
+        <BackToTop />
 
         <Box
           component="footer"

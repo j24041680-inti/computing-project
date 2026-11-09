@@ -24,6 +24,7 @@ const SafetyGaugeD3 = ({
   const dark = palette.mode === 'dark';
   const svgRef = useRef(null);
   const needleAngle = useRef(-90);
+  const displayedApi = useRef(Number(predictedApi));
   const [hoveredZone, setHoveredZone] = useState(null);
 
   useEffect(() => {
@@ -105,20 +106,10 @@ const SafetyGaugeD3 = ({
     const needleLen = 80;
     const targetDeg = (angleScale(predictedApi) * 180) / Math.PI;
 
-    g.append('path')
+    const needle = g.append('path')
       .attr('d', `M -3.5 0 L 0 -${needleLen} L 3.5 0 Z`)
       .attr('fill', palette.text.primary)
-      .attr('transform', `rotate(${reducedMotion ? targetDeg : needleAngle.current})`)
-      .transition()
-      .duration(reducedMotion ? 0 : 700)
-      .ease(d3.easeCubicOut)
-      .attrTween('transform', () => {
-        const interpolate = d3.interpolateNumber(needleAngle.current, targetDeg);
-        return (t) => {
-          needleAngle.current = interpolate(t);
-          return `rotate(${needleAngle.current})`;
-        };
-      });
+      .attr('transform', `rotate(${reducedMotion ? targetDeg : needleAngle.current})`);
 
     g.append('circle')
       .attr('cx', 0)
@@ -128,14 +119,28 @@ const SafetyGaugeD3 = ({
       .attr('stroke', palette.background.paper)
       .attr('stroke-width', 2);
 
-    g.append('text')
+    const reading = g.append('text')
       .attr('x', 0)
       .attr('y', -30)
       .attr('text-anchor', 'middle')
       .attr('font-size', '28px')
       .attr('font-weight', '800')
       .attr('fill', dark ? palette.text.primary : badgeColor)
-      .text(Number(predictedApi).toFixed(1));
+      .text((reducedMotion ? Number(predictedApi) : displayedApi.current).toFixed(1));
+
+    if (reducedMotion) {
+      needleAngle.current = targetDeg;
+      displayedApi.current = Number(predictedApi);
+    } else {
+      const angle = d3.interpolateNumber(needleAngle.current, targetDeg);
+      const api = d3.interpolateNumber(displayedApi.current, Number(predictedApi));
+      needle.transition().duration(300).ease(d3.easeCubicOut).tween('reading', () => (progress) => {
+        needleAngle.current = angle(progress);
+        displayedApi.current = api(progress);
+        needle.attr('transform', `rotate(${needleAngle.current})`);
+        reading.text(displayedApi.current.toFixed(1));
+      });
+    }
 
     g.append('text')
       .attr('x', 0)
@@ -158,12 +163,14 @@ const SafetyGaugeD3 = ({
 
   return (
     <Box sx={{ width: '100%', textAlign: 'center', py: 0.5 }}>
-      <svg
-        ref={svgRef}
-        style={{ width: '100%', maxWidth: '320px', height: 'auto', overflow: 'visible' }}
-        role="img"
-        aria-label="Safety Dial Gauge"
-      />
+      <Box sx={{ width: { xs: '90%', lg: '100%' }, maxWidth: { xs: 340, sm: 540, lg: 'none' }, mx: 'auto' }}>
+        <svg
+          ref={svgRef}
+          style={{ width: '100%', height: 'auto', overflow: 'visible' }}
+          role="img"
+          aria-label="Safety Dial Gauge"
+        />
+      </Box>
       <Box sx={{ minHeight: 28, mt: 0.5 }}>
         {hoveredZone ? (
           <Chip
