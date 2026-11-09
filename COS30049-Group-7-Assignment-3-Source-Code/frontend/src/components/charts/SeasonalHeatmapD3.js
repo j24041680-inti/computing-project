@@ -3,17 +3,12 @@ import { getContrastRatio, useTheme } from '@mui/material/styles';
 import { bindChartTargets } from '../../utils/chartInteraction';
 import { formatApi } from '../../utils/formatApi';
 import useReducedMotion from '../../hooks/useReducedMotion';
+
 /**
- * SeasonalHeatmapD3.js
- * ============================================================================
- * Chart 4 (D3.js): 12-Month Station Air Quality & Planning Risk Matrix
- * Unit: COS30049 Computing Technology Innovation Project (Group 7 - SchoolAir)
- *
- * Updates:
- *  - Removed correlation matrix mode per user request; focused entirely on 12-Month seasonal risk.
- *  - Connected station filter: Allows focusing on selectedDistrict or viewing all stations in corridor.
- *  - Clean D3 cleanup on unmount.
- */
+ SeasonalHeatmapD3.js
+ 
+ Chart 4 (D3.js): 12-Month Station Air Quality & Planning Risk Matrix
+ **/
 
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';

@@ -1,13 +1,10 @@
 import { useTheme } from '@mui/material/styles';
 import useReducedMotion from '../../hooks/useReducedMotion';
 /**
- * SafetyGaugeD3.js
- * ============================================================================
- * Chart 1 (D3.js): Minimalist Semicircle Air Pollutant Index (API) Safety Gauge
- * Unit: COS30049 Computing Technology Innovation Project (Group 7 - SchoolAir)
- *
- * Fix: Full cleanup on unmount to prevent stale D3 listeners blocking navigation.
- */
+ SafetyGaugeD3.js
+
+ Chart 1 (D3.js): Minimalist Semicircle Air Pollutant Index (API) Safety Gauge
+ **/
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
@@ -152,7 +149,7 @@ const SafetyGaugeD3 = ({
       .attr('letter-spacing', '0.8px')
       .text('PREDICTED API');
 
-    // ✅ CLEANUP: Kill transitions & wipe SVG so unmount is safe
+    // Kill transitions & wipe SVG so unmount is safe
     return () => {
       svg.selectAll('*').interrupt();
       svg.selectAll('*').remove();

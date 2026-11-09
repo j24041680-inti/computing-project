@@ -1,10 +1,5 @@
 """
 SchoolAir FastAPI Backend Server (Assignment 3 - Full-Stack AI Web Application)
-================================================================================
-Updated with:
-  1. Multi-Year support (accepts year in seasonal-planner and date in assess-event).
-  2. Free-text custom_school_name support in forecast-lookup so any school name in
-     Malaysia is dynamically reflected in AI safety reports and event schedules.
 """
 
 import os

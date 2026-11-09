@@ -4,15 +4,9 @@ import { formatDate } from './utils/dateFormat';
 import SafetyPrintReport from './components/SafetyPrintReport';
 import useReducedMotion from './hooks/useReducedMotion';
 /**
- * App.js — SchoolAir Full-Stack Application
- * ============================================================================
- * Updated:
- *  - iPad Mini / Tablet Home Search: When inputs form a 2x2 grid, "Check Safety"
- *    button spans both columns and centers cleanly in the middle.
- *  - Retains all responsive, multi-year, and state/district improvements.
- *
- * Unit: COS30049 Group 7 (Poh Wei Le, Ng Boon Ping, Kennard Chan Kai Lik, Tee Ming Jun)
- */
+ App.js — SchoolAir Full-Stack Application
+ Unit: COS30049 Group 7 (Poh Wei Le, Ng Boon Ping, Kennard Chan Kai Lik, Tee Ming Jun)
+ **/
 
 import { formatApi } from './utils/formatApi';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -542,8 +536,7 @@ function App() {
   }, [assessmentSelectionKey, selectedDistrict, customSchoolName, eventDate, selectedMonth, startHour, durationHours, activityType, cohort, weatherRegime]);
 
   useEffect(() => {
-    // Month selection in the planner only selects a calendar cell. Fetch the
-    // detailed assessment when its results are actually visible.
+    // Month selection in the planner only selects a calendar cell. Fetch the detailed assessment when its results are actually visible.
     if (location.pathname === '/checker' || location.pathname === '/') fetchEventAssessment();
   }, [fetchEventAssessment, location.pathname]);
 
@@ -838,9 +831,7 @@ function App() {
           overflowX: 'clip',
         }}
       >
-        {/* =================================================================
-            APP BAR (Fluid Container)
-            ================================================================= */}
+        {/* App Bar (Fluid Container) */}
         <AppBar
           id="site-navigation"
           tabIndex={-1}
@@ -947,9 +938,7 @@ function App() {
           </Container>
         </AppBar>
 
-        {/* =================================================================
-            MAIN CONTAINER
-            ================================================================= */}
+        {/* Main Container */}
         <Container
           component="main"
           maxWidth="xl"
@@ -962,7 +951,7 @@ function App() {
         >
           <Box key={location.key} className="page-enter">
             <Routes>
-              {/* =========================== HOME =========================== */}
+              {/* Home */}
               <Route
                 path="/"
                 element={
@@ -1313,7 +1302,7 @@ function App() {
                 }
               />
 
-              {/* =========================== CHECKER =========================== */}
+              {/* Checker */}
               <Route
                 path="/checker"
                 element={
@@ -1668,7 +1657,7 @@ function App() {
                 }
               />
 
-              {/* =========================== PLANNER =========================== */}
+              {/* Planner */}
               <Route
                 path="/planner"
                 element={
@@ -2177,7 +2166,7 @@ function App() {
                 }
               />
 
-              {/* =========================== ANALYTICS =========================== */}
+              {/* Analytics */}
               <Route
                 path="/analytics"
                 element={
