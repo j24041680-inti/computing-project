@@ -12,13 +12,13 @@ Running the submission ZIP? Start with the [Windows setup](#3-first-time-setup-o
 
 ## 1. System Overview
 
-**SchoolAir** is a production-grade full-stack web application integrating machine learning with interactive data visualization to safeguard Malaysian schoolchildren against urban air pollution and transboundary haze.
+**SchoolAir** helps Malaysian schools plan outdoor events using historical air-quality estimates and interactive charts.
 
 The platform bridges trained **XGBoost** regression and classification models with a modern, responsive web stack:
 - **Frontend:** React 19, Material UI (MUI), and four custom D3.js (v7) visualization engines.
-- **Backend:** High-performance FastAPI REST server with Pydantic boundary validation.
-- **Machine Learning Core:** XGBoost universal cross-platform model boosters (`champion_regressor.json`, `champion_classifier.json`) serving precomputed hourly hazard forecasts across all 26 DOE air quality monitoring stations in Malaysia, with optional on-demand inference using stored seasonal features.
-- **Regulatory Framework:** Evaluates student exposure against **Malaysian Ministry of Education (MOE) Circular No. 1/2019** and the **Malaysian Ambient Air Quality Standard (MAAQS)** across three student vulnerability cohorts (*Cohort A: General*, *Cohort B: High-Intensity Athletic*, *Cohort C: Asthmatic & Respiratory Sensitive*).
+- **Backend:** FastAPI REST server with Pydantic request validation.
+- **Machine Learning Core:** Packaged XGBoost models (`champion_regressor.json`, `champion_classifier.json`) and precomputed seasonal estimates for the 26 DOE monitoring stations in the project dataset. On-demand inference uses stored seasonal features.
+- **School Event Guidance:** The app maps estimated Air Pollutant Index (API) values to event guidance. The backend supports thresholds for three student cohorts, listed in Section 8.
 
 ---
 
@@ -30,7 +30,7 @@ computing-project/
 ├── start_schoolair.sh                            <-- One-click macOS / Linux launch script
 │
 ├── backend/                                      <-- FastAPI Server & AI Model Serving
-│   ├── main.py                                   <-- REST API server (CORS, CRUD, What-If simulation)
+│   ├── main.py                                   <-- REST API, model inference, and event scheduling
 │   ├── generate_forecast_dataset.py              <-- Precomputes 7,488 hourly forecasts & TreeSHAP data
 │   ├── requirements.txt                          <-- Python dependencies
 │   ├── models/                                   <-- Machine learning models & feature mappings
@@ -59,14 +59,15 @@ computing-project/
         ├── App.css                               <-- Responsive styling, mobile viewports & print styles
         ├── index.js                              <-- React DOM renderer
         ├── utils/
-        │   └── exportUtils.js                    <-- CSV and printable PDF export utilities
+        │   └── exportUtils.js                    <-- CSV export utilities
         └── components/
+            ├── SafetyPrintReport.js              <-- Printable Safety Checker report
             └── charts/                           <-- D3.js charts and shared tooltip
                 ├── ChartPointReadout.js          <-- Shared tooltip for the curves, heatmap, and SHAP chart
                 ├── SafetyGaugeD3.js              <-- Semicircle dial gauge with animated needle
                 ├── DiurnalTrendD3.js             <-- 24h diurnal curve & 168h Focus+Context brush-zoom
                 ├── ShapAttributionD3.js          <-- TreeSHAP feature attribution bar chart
-                └── SeasonalHeatmapD3.js          <-- 12-month station risk & Pearson correlation matrix
+                └── SeasonalHeatmapD3.js          <-- 12-month regional station heatmap
 ```
 
 ---
@@ -178,22 +179,22 @@ Open [http://localhost:3000](http://localhost:3000). After setup, run just the s
 ## 6. Key Features & Visualizations
 
 1. **Safety Checker View (`/checker`):**
-   - Instant forecast lookup by State, District, Date, Hour, Cohort, and Activity.
+   - Seasonal estimate lookup by station, event date, start hour, and activity.
    - Semicircle safety gauge with dynamic MOE threshold sectors.
    - 24-hour diurnal risk curve highlighting the safest clean-air window.
-   - TreeSHAP feature attributions showing exact drivers of air quality.
-   - Optional **Run Model Prediction** button reruns XGBoost with stored historical features for the selected event hours and displays a separate result. Main readings, charts, exports, and saved events continue to use the precomputed dataset. Small differences can arise from rounded stored features.
+   - TreeSHAP feature attributions showing which inputs contribute to the stored prediction.
+   - Optional **Run Model Prediction** button reruns XGBoost with stored historical features for the selected event hours and displays a separate result. Small differences can arise from rounded stored features.
+   - Assessment CSV export and a printable report that can be saved as PDF from the browser.
 
 2. **Event Planner View (`/planner`):**
-   - Multi-year planning calendar (2026, 2027, 2028, 2029). Each year reuses historical seasonal estimates; these are not year-specific forecasts.
-   - District-level monthly risk bar chart and Monsoon hazard warnings.
-   - Full RESTful Event Schedule Manager with Create, Edit, Reschedule, and Delete actions.
-   - One-click CSV and print-ready PDF export.
+   - Multi-year planning calendar (2026–2029) that reuses the historical monthly profiles across planning years.
+   - Monthly risk and planning recommendations, plus side-by-side comparison of two stations for the selected month and start hour.
+   - Create, reschedule, and delete saved events. Export monthly summaries and scheduled events as CSV files.
 
 3. **Analytics Dashboard (`/analytics`):**
-   - 168-hour Focus + Context interactive brush-zoom time-series (`d3.brushX`).
-   - 26-Station × 12-Month seasonal risk heatmap with drill-down inspector.
-   - Inter-pollutant and weather Pearson correlation matrix.
+   - **12-Month Regional Heatmap** with station and corridor filters and cell details.
+   - **7-Day Haze Trends** with a draggable time range for exploring historical readings and model predictions.
+   - The Analytics API response also includes correlation data and model metrics.
 
 ---
 
@@ -205,11 +206,13 @@ The backend provides full Swagger UI documentation at `http://localhost:8000/doc
 | :--- | :--- | :--- |
 | **GET** | `/api/v1/health` | Service status, station and forecast counts, and model metrics |
 | **GET** | `/api/v1/stations` | List of 26 monitoring stations and 4 regional corridors |
+| **GET** | `/api/v1/schools` | Returns school directory entries, with optional state, district, and corridor filters |
 | **GET** | `/api/v1/forecast-lookup` | Retrieves precomputed hourly forecasts, MOE directive, and SHAP data |
+| **GET** | `/api/v1/compare-districts` | Compares two stations for the same month and start hour |
 | **POST** | `/api/v1/model-prediction` | Reruns the model using stored seasonal features; returns a separate prediction |
-| **POST** | `/api/v1/assess-event` | Evaluates event safety with optional live What-If weather overrides |
+| **POST** | `/api/v1/assess-event` | Assesses an event from a JSON request, with optional API and weather input overrides |
 | **GET** | `/api/v1/seasonal-planner` | Returns 12-month risk profiles and safest months for a given year |
-| **GET** | `/api/v1/analytics` | Provides time-series and correlation matrix data for D3.js charts |
+| **GET** | `/api/v1/analytics` | Returns the historical time series, heatmap data, correlation matrix, and model metrics |
 | **GET** | `/api/v1/events` | Retrieves all scheduled school outdoor events |
 | **POST** | `/api/v1/events` | Creates a new scheduled school outdoor event |
 | **PUT** | `/api/v1/events/{event_id}` | Updates or auto-reschedules an existing school outdoor event |
@@ -217,17 +220,15 @@ The backend provides full Swagger UI documentation at `http://localhost:8000/doc
 
 ---
 
-## 8. Regulatory Reference (MOE Circular No. 1/2019)
+## 8. Safety Thresholds Used by SchoolAir
 
-SchoolAir operationalizes the **Ministry of Education Malaysia Circular No. 1/2019 (Surat Pekeliling Ikhtisas Bil. 1/2019: Panduan Pengurusan Cuaca Panas dan Jerebu di Sekolah)**:
+The backend applies the following thresholds to the estimated Air Pollutant Index. The Safety Checker uses the general cohort.
 
-| API Range | Air Quality Status | MOE SOP Directive | System Badge |
-| :---: | :---: | :--- | :---: |
-| **0 – 50** | Good | All outdoor PE, assemblies, and sporting events proceed normally. | `SAFE` |
-| **51 – 100** | Moderate | Caution advised; shorten intense exertion; monitor respiratory-sensitive students. | `CAUTION` |
-| **101 – 200** | Unhealthy | Mandatory cessation of outdoor sports & assemblies; relocate activities indoors. | `MOVE INDOORS` |
-| **201 – 300** | Very Unhealthy | Complete suspension of outdoor activities; prepare campus closure protocols. | `TOTAL SUSPENSION` |
-| **> 300** | Hazardous | Immediate school closure and transition to Home-Based Learning (PdPR). | `EMERGENCY CLOSURE` |
+| Cohort | `SAFE` | `CAUTION` | `MOVE INDOORS` | `TOTAL SUSPENSION` |
+| :--- | :--- | :--- | :--- | :--- |
+| General | API ≤ 50 | Above 50 through 100 | Above 100 through 200 | Above 200 |
+| High-intensity athletics | API ≤ 46 | Above 46 through 88 | Above 88 through 175 | Above 175 |
+| Asthmatic and respiratory-sensitive students | API ≤ 42 | Above 42 through 75 | Above 75 through 150 | Above 150 |
 
 ## Backend regression checks
 
